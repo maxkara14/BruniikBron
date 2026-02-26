@@ -25,7 +25,7 @@ Song: [Artist Name - Song Title]
         },
         {
             title: "📱 Kasugai OS",
-            description: "Операционная система Касугай вдохновлённая The Sims. Мудлеты. Отслеживание потребностей персоны. События вне сцены и комментарии. Требует импорта регекса.",
+            description: "Операционная система Касугай вдохновлённая The Sims. Мудлеты. Отслеживание потребностей персоны. События вне сцены и комментарии. Требует импорта регекса. Требует импорта регекса. В архиве 2 регекса: тёмная и светлая тема. Выбирать только один.",
             promptText: `[SYSTEM INSTRUCTION: KASUGAI OS GENERATION]
 At the VERY END of your response, generate a hidden data block.
 **STYLE:** Modern Smartphone OS.
@@ -68,7 +68,7 @@ Comm_1: [Emoji] | [Nick] | [Reaction/Comment]
 Comm_2: [Emoji] | [Nick] | [Reaction/Comment]
 Comm_3: [Emoji] | [Nick] | [Reaction/Comment]
 ::OS_END::`,
-            regexFile: "files/regex/regex-kasugai_os.json"
+            regexFile: "files/regex/KasugaiOS.zip"
         }
     ],
     bots: [
