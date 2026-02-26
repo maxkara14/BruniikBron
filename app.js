@@ -8,7 +8,7 @@ function renderToggles() {
         card.className = 'card';
         card.innerHTML = `
             <div class="post-header">
-                <div class="avatar toggle">T</div>
+                <div class="avatar toggle">P</div>
                 <div class="post-meta">
                     <span class="post-author">${item.title}</span>
                     <span class="post-time">Regex • Промпт</span>
@@ -34,7 +34,7 @@ function renderBots() {
         card.className = 'card';
         card.innerHTML = `
             <div class="post-header">
-                <div class="avatar bot">B</div>
+                <div class="avatar bot">C</div>
                 <div class="post-meta">
                     <span class="post-author">${item.title}</span>
                     <span class="post-time">Архив Персонажей • JSON</span>
