@@ -24,9 +24,9 @@ Song: [Artist Name - Song Title]
             regexFile: "files/regex/regex-lycoris_fm.json"
         },
         {
-            title: "📱 Kasugai OS",
-            description: "Операционная система Касугай вдохновлённая The Sims. Мудлеты. Отслеживание потребностей персоны. События вне сцены и комментарии. Требует импорта регекса. Требует импорта регекса. В архиве 2 регекса: тёмная и светлая тема. Выбирать только один.",
-            promptText: `[SYSTEM INSTRUCTION: KASUGAI OS GENERATION]
+            title: "📱 SIMS OS",
+            description: "Стильный планшет вдохновлённый The Sims. Мудлеты. Отслеживание потребностей. События вне сцены и комментарии. Требует импорта регекса.",
+            promptText: `[SYSTEM INSTRUCTION: SimsOS GENERATION]
 At the VERY END of your response, generate a hidden data block.
 **STYLE:** Modern Smartphone OS.
 **LANGUAGE:** Russian.
@@ -35,8 +35,9 @@ At the VERY END of your response, generate a hidden data block.
 2. **MOODLETS:** Generate 4 active buffs/moodlets. Format: "Emoji | Title | Short Comment".
 3. **GEAR:** Consolidate Inventory and Outfit.
 4. **FEED CONTENT (IMPORTANT):**
-   - **Events:** Describe brief but VIVID off-screen scenes happening elsewhere (e.g., "In the cafeteria, Zenitsu is crying over spilled milk"). Not just status updates.
-   - **Comments:** Social media/Reader reactions to the current situation. Use internet slang, memes, caps lock, shipping.
+   - **Events:** Describe brief but VIVID off-screen scenes happening elsewhere in the world.
+   - **Comments:** Social media/Reader reactions to the current situation. Use internet slang, memes, caps lock.
+5. **BATTERY:** Track the phone's battery level (0-100). Decrease it by 1-3% with each message depending on active use.
 
 **OUTPUT FORMAT:**
 Use this EXACT format. One variable per line.
@@ -67,8 +68,9 @@ Event_2: [Time] | [Location] | [Vivid Description of off-screen event]
 Comm_1: [Emoji] | [Nick] | [Reaction/Comment]
 Comm_2: [Emoji] | [Nick] | [Reaction/Comment]
 Comm_3: [Emoji] | [Nick] | [Reaction/Comment]
+Battery: [0-100]
 ::OS_END::`,
-            regexFile: "files/regex/KasugaiOS.zip"
+            regexFile: "files/regex/SimsOS.zip"
         }
     ],
     bots: [
