@@ -172,6 +172,7 @@ section h2 {
 }
 
 /* ГАЛЕРЕЯ */
+/* ГАЛЕРЕЯ */
 .gallery-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -188,6 +189,7 @@ section h2 {
     box-shadow: 0 5px 15px rgba(0,0,0,0.5);
     transition: all 0.3s ease;
     background: #111;
+    cursor: pointer; /* Делаем курсор-руку, чтобы было ясно, что кликабельно */
 }
 
 .gallery-item:hover {
@@ -196,10 +198,17 @@ section h2 {
     box-shadow: 0 10px 25px rgba(212,175,55,0.3);
 }
 
+/* ФИНАЛЬНЫЕ УЛУЧШЕНИЯ ИЗОБРАЖЕНИЙ */
 .gallery-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block; /* Убирает микро-отступ снизу */
+    
+    /* 🛠️ УБИРАЕМ ПИКСЕЛИЗАЦИЮ 🛠️ */
+    /* Заставляем браузер использовать качественные алгоритмы сглаживания при сжатии */
+    image-rendering: -webkit-optimize-contrast; /* Старый хаб для Chrome/Safari */
+    image-rendering: high-quality;            /* Стандартный CSS параметр */
 }
 
 /* =========================================
