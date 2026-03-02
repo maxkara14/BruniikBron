@@ -11,7 +11,7 @@ function renderExtensions() {
                 <div class="avatar utility">E</div>
                 <div class="post-meta">
                     <span class="post-author">${item.title}</span>
-                    <span class="post-time">SillyTavern Extension</span>
+                    <span class="post-time">SillyTavern Mod</span>
                 </div>
             </div>
             <div class="post-body">
@@ -48,16 +48,23 @@ function renderBots() {
     });
 }
 
-// Отрисовка Галереи
+// Отрисовка Галереи (v2.0 - Кликабельная)
 function renderGallery() {
     const container = document.getElementById('gallery-container');
-    container.innerHTML = '';
+    if (!container) return; // Защита на случай, если блока нет
+
+    container.innerHTML = ''; 
     
     siteData.gallery.forEach(img => {
         const item = document.createElement('div');
         item.className = 'gallery-item';
-        // Если картинка не загрузится (например, ты еще не создал файл), покажется заглушка
-        item.innerHTML = `<img src="${img.src}" alt="${img.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMzZjJjMmMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iI2Q0YWYzNyIgZm9udC1zaXplPSIxOHB4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+QXJ0IEhlcmU8L3RleHQ+PC9zdmc+'" loading="lazy">`;
+        
+        // Оборачиваем картинку в ссылку на саму себя
+        item.innerHTML = `
+            <a href="${img.src}" target="_blank" rel="noopener noreferrer" title="Открыть оригинал: ${img.title}">
+                <img src="${img.src}" alt="${img.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMzZjJjMmMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iI2Q0YWYzNyIgZm9udC1zaXplPSIxOHB4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+QXJ0IEhlcmU8L3RleHQ+PC9zdmc+'" loading="lazy">
+            </a>
+        `;
         container.appendChild(item);
     });
 }
