@@ -2,7 +2,7 @@ const siteData = {
     extensions: [
         {
             title: "🛠️ BB UI Regex Manager",
-            description: "Центр управления регексами для SillyTavern. Планшет (SimsOS), радио, красивые переходы и набор фильтров для очистки сообщений от мусора.",
+            description: "Центр управления регексами для SillyTavern. Планшет (SimsOS), радио, оформление сообщения в красивый контейнер и добавление блоков/переходов, набор фильтров для очистки сообщений от мусора.",
             url: "https://github.com/maxkara14/BB-UI-Regex-Pack",
             btnText: "Установить с GitHub"
         },
