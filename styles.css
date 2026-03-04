@@ -315,3 +315,56 @@ audio.l-audio-player::-webkit-media-controls-time-remaining-display {
   cursor: pointer; filter: sepia(1) saturate(10) hue-rotate(350deg) brightness(1.2) !important;
 }
 audio.l-audio-player::-webkit-media-controls-timeline { display: none !important; }
+
+/* =========================================
+   МЕХАНИКА ТОГЛОВ (СПОЙЛЕРОВ)
+   ========================================= */
+.toggle-header {
+    cursor: pointer;
+    position: relative;
+    display: inline-block; /* Чтобы зона клика была по размеру текста */
+    transition: all 0.2s ease;
+    user-select: none; /* Чтобы текст не выделялся при быстрых кликах */
+}
+
+/* Добавляем немного неона при наведении, используя твои переменные */
+.toggle-header:hover {
+    text-shadow: 0 0 10px var(--accent-red); /* */
+}
+
+/* Прикручиваем стрелочку-индикатор справа от текста */
+.toggle-header::after {
+    content: ' ▼';
+    font-size: 14px;
+    display: inline-block;
+    transition: transform 0.3s ease;
+    color: var(--accent-gold); /* */
+    margin-left: 8px;
+}
+
+/* =========================================
+   ГИДРАВЛИКА ТОГЛОВ (CSS GRID TRICK)
+   ========================================= */
+.toggle-wrapper {
+    display: grid;
+    grid-template-rows: 1fr;
+    /* Настраиваем плавную кривую анимации, как у хороших амортизаторов */
+    transition: grid-template-rows 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+
+.toggle-wrapper.collapsed {
+    grid-template-rows: 0fr;
+}
+
+.toggle-inner {
+    overflow: hidden; /* Чтобы контент не торчал, когда блок сжимается */
+    transition: opacity 0.3s ease, transform 0.4s ease;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Эффект растворения и легкого сдвига при сворачивании */
+.toggle-wrapper.collapsed .toggle-inner {
+    opacity: 0;
+    transform: translateY(-10px);
+}
