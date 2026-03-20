@@ -227,18 +227,30 @@ section h2 {
 
 /* === БОКОВЫЕ ВИДЖЕТЫ (СТОЛ ЛОНЫ) === */
 .side-widget {
-    position: fixed; top: 120px; width: 220px; z-index: 10;
-    display: none; /* Прячем на мобилках */
-    animation: floatWidget 6s ease-in-out infinite;
+    /* На мобилках выстраиваем их аккуратно по центру друг под другом */
+    position: relative; 
+    width: 90%; 
+    max-width: 320px; 
+    margin: 20px auto; 
+    z-index: 10;
 }
+
 @keyframes floatWidget {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-8px); }
 }
-/* Показываем виджеты только если экран шире 1250px */
+
+/* Переключаемся на фиксированную подвеску только на больших экранах */
 @media (min-width: 1250px) {
-    .widget-left { display: block; left: calc(50vw - 580px); }
-    .widget-right { display: block; right: calc(50vw - 580px); animation-delay: 1s; }
+    .side-widget {
+        position: fixed; 
+        top: 120px; 
+        width: 220px; 
+        margin: 0;
+        animation: floatWidget 6s ease-in-out infinite;
+    }
+    .widget-left { left: calc(50vw - 580px); }
+    .widget-right { right: calc(50vw - 580px); animation-delay: 1s; }
 }
 
 /* Таймер Помодоро */
