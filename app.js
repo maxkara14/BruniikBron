@@ -468,12 +468,20 @@ function initCanvasNotes() {
         const note = document.createElement('div');
         note.className = 'canvas-note';
         
-        // Умный спавн (не улетаем за край на мобилках)
-        const isMobile = window.innerWidth < 600;
-        const startX = isMobile ? 20 + (noteCount % 3) * 10 : window.innerWidth - 250 - (noteCount % 5) * 30;
+        // === ПУЛЕНЕПРОБИВАЕМЫЙ СПАВН ===
+        const noteWidth = 220; // Примерная полная ширина записки
+        
+        // Вычисляем X: берем ширину экрана, отнимаем ширину записки и делаем небольшой каскад
+        let startX = window.innerWidth - noteWidth - 20 - (noteCount % 5) * 20;
+        
+        // Если экран совсем узкий (мобилка) и места справа не осталось, паркуем слева
+        if (startX < 20) {
+            startX = 20 + (noteCount % 3) * 10;
+        }
         
         note.style.top = (100 + (noteCount % 5) * 30) + 'px';
         note.style.left = startX + 'px';
+        note.style.right = 'auto'; // Строго отрываем от правого края, чтобы не было конфликта CSS!
 
         note.innerHTML = `
             <div class="canvas-handle" title="Потяни меня"></div>
