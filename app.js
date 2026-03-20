@@ -216,7 +216,7 @@ function initPomodoro() {
         updateDisplay();
     });
 }
-// === ДВИЖОК DRAG & DROP ===
+// === ДВИЖОК DRAG & DROP (С СЕНСОРНЫМ ПРИВОДОМ) ===
 function initDraggableWidgets() {
     const widgets = [
         { el: document.querySelector('.widget-left'), handle: document.querySelector('.pomo-title') },
@@ -228,50 +228,52 @@ function initDraggableWidgets() {
         
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         
-        widget.handle.onmousedown = function(e) {
-            e.preventDefault();
+        function dragStart(e) {
+            // Если тапаем с телефона - берем координаты первого пальца
+            const evt = e.type.includes('touch') ? e.touches[0] : e;
+            if (!e.type.includes('touch')) e.preventDefault(); 
+            
             widget.el.classList.add('is-dragging');
             
-            // ФИКС РЫВКА: Фиксируем точные координаты перед отрывом от края экрана
             const rect = widget.el.getBoundingClientRect();
             widget.el.style.left = rect.left + 'px';
             widget.el.style.top = rect.top + 'px';
-            
-            // Теперь безопасно отрываем
             widget.el.style.right = 'auto'; 
             widget.el.style.bottom = 'auto';
 
-            // Берем старт мыши
-            pos3 = e.clientX;
-            pos4 = e.clientY;
+            pos3 = evt.clientX;
+            pos4 = evt.clientY;
             
-            document.onmouseup = closeDragElement;
-            document.onmousemove = elementDrag;
-        };
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('touchend', dragEnd);
+            // passive: false нужно, чтобы телефон не пытался скроллить страницу во время таскания виджета!
+            document.addEventListener('touchmove', dragMove, { passive: false }); 
+        }
 
-        function elementDrag(e) {
-            e.preventDefault();
-            // Высчитываем новую позицию
-            pos1 = pos3 - e.clientX;
-            pos2 = pos4 - e.clientY;
-            pos3 = e.clientX;
-            pos4 = e.clientY;
+        function dragMove(e) {
+            e.preventDefault(); // Глушим системный скролл
+            const evt = e.type.includes('touch') ? e.touches[0] : e;
+            pos1 = pos3 - evt.clientX;
+            pos2 = pos4 - evt.clientY;
+            pos3 = evt.clientX;
+            pos4 = evt.clientY;
             
-            // Отрываем виджет от правого/левого края, чтобы двигался свободно
-            widget.el.style.right = 'auto'; 
-            widget.el.style.bottom = 'auto';
-            
-            // Двигаем
             widget.el.style.top = (widget.el.offsetTop - pos2) + "px";
             widget.el.style.left = (widget.el.offsetLeft - pos1) + "px";
         }
 
-        function closeDragElement() {
-            // Опускаем ручник
-            document.onmouseup = null;
-            document.onmousemove = null;
+        function dragEnd() {
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('mousemove', dragMove);
+            document.removeEventListener('touchend', dragEnd);
+            document.removeEventListener('touchmove', dragMove);
             widget.el.classList.remove('is-dragging');
         }
+
+        // Цепляем и мышку, и пальцы
+        widget.handle.addEventListener('mousedown', dragStart);
+        widget.handle.addEventListener('touchstart', dragStart, { passive: false });
     });
 }
 // === СИСТЕМА УВЕДОМЛЕНИЙ (АЧИВКИ) ===
@@ -448,9 +450,8 @@ function initLoFiCursor() {
         }, 2000);
     });
 }
-// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (CANVAS) ===
+// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (CANVAS С СЕНСОРОМ) ===
 function initCanvasNotes() {
-    // Создаем кнопку-генератор в левом нижнем углу
     const spawnBtn = document.createElement('button');
     spawnBtn.innerHTML = '📝 Новый скетч';
     spawnBtn.className = 'btn'; 
@@ -467,9 +468,12 @@ function initCanvasNotes() {
         const note = document.createElement('div');
         note.className = 'canvas-note';
         
-        // Спавним их каскадом, чтобы не ложились ровно друг на друга
-        note.style.top = (150 + (noteCount % 5) * 30) + 'px';
-        note.style.right = (350 + (noteCount % 5) * 30) + 'px';
+        // Умный спавн (не улетаем за край на мобилках)
+        const isMobile = window.innerWidth < 600;
+        const startX = isMobile ? 20 + (noteCount % 3) * 10 : window.innerWidth - 250 - (noteCount % 5) * 30;
+        
+        note.style.top = (100 + (noteCount % 5) * 30) + 'px';
+        note.style.left = startX + 'px';
 
         note.innerHTML = `
             <div class="canvas-handle" title="Потяни меня"></div>
@@ -479,82 +483,99 @@ function initCanvasNotes() {
         `;
         document.body.appendChild(note);
 
-        // 1. Кнопка удаления
         note.querySelector('.canvas-close').addEventListener('click', () => {
             note.style.transform = 'scale(0)';
             setTimeout(() => note.remove(), 200);
         });
 
-        // 2. Механика перетаскивания (своя независимая подвеска)
+        // --- МЕХАНИКА ПЕРЕТАСКИВАНИЯ ---
         const handle = note.querySelector('.canvas-handle');
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         
-        handle.onmousedown = (e) => {
-            e.preventDefault();
-            // Вытаскиваем записку поверх остальных
+        function dragStart(e) {
+            const evt = e.type.includes('touch') ? e.touches[0] : e;
+            if (!e.type.includes('touch')) e.preventDefault();
             note.style.zIndex = 1600 + noteCount;
+            pos3 = evt.clientX; 
+            pos4 = evt.clientY;
             
-            pos3 = e.clientX; 
-            pos4 = e.clientY;
-            
-            document.onmouseup = () => {
-                document.onmouseup = null; 
-                document.onmousemove = null; 
-            };
-            
-            document.onmousemove = (e) => {
-                e.preventDefault();
-                pos1 = pos3 - e.clientX; 
-                pos2 = pos4 - e.clientY;
-                pos3 = e.clientX; 
-                pos4 = e.clientY;
-                
-                // Перемещаем
-                note.style.top = (note.offsetTop - pos2) + "px";
-                note.style.left = (note.offsetLeft - pos1) + "px";
-                note.style.right = 'auto'; // Отрываем от правого края, если он был
-            };
-        };
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('touchend', dragEnd);
+            document.addEventListener('touchmove', dragMove, { passive: false });
+        }
+        
+        function dragMove(e) {
+            e.preventDefault();
+            const evt = e.type.includes('touch') ? e.touches[0] : e;
+            pos1 = pos3 - evt.clientX; 
+            pos2 = pos4 - evt.clientY;
+            pos3 = evt.clientX; 
+            pos4 = evt.clientY;
+            note.style.top = (note.offsetTop - pos2) + "px";
+            note.style.left = (note.offsetLeft - pos1) + "px";
+        }
 
-        // 3. Механика рисования!
+        function dragEnd() {
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('mousemove', dragMove);
+            document.removeEventListener('touchend', dragEnd);
+            document.removeEventListener('touchmove', dragMove);
+        }
+
+        handle.addEventListener('mousedown', dragStart);
+        handle.addEventListener('touchstart', dragStart, { passive: false });
+
+        // --- МЕХАНИКА РИСОВАНИЯ ---
         const canvas = note.querySelector('.canvas-board');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
 
-        // Настраиваем "карандаш" (цвет чернил и толщину)
-        ctx.strokeStyle = '#3b301a'; // Темно-коричневый
+        ctx.strokeStyle = '#3b301a';
         ctx.lineWidth = 2.5;
-        ctx.lineCap = 'round'; // Круглые края линий для мягкости
+        ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
-        // Функция получения координат мыши внутри Canvas
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
+            const evt = e.type.includes('touch') ? e.touches[0] : e;
             return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
             };
         }
 
-        canvas.addEventListener('mousedown', (e) => {
+        function startDraw(e) {
+            if (e.type.includes('touch')) e.preventDefault(); // Глушим скролл при рисовании
             isDrawing = true;
             const pos = getPos(e);
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
-            // Чтобы ставить просто "точки" по клику:
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
+        function draw(e) {
             if (!isDrawing) return;
+            if (e.type.includes('touch')) e.preventDefault(); // Глушим скролл при рисовании
             const pos = getPos(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-        });
+        }
 
-        canvas.addEventListener('mouseup', () => isDrawing = false);
-        canvas.addEventListener('mouseleave', () => isDrawing = false); // Защита, если мышка ушла за край
+        function stopDraw() { isDrawing = false; }
+
+        // Слушаем мышь
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        
+        // Слушаем сенсор (телефоны/планшеты)
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDraw);
+        canvas.addEventListener('touchcancel', stopDraw);
     });
 }
 
