@@ -59,5 +59,8 @@ const siteData = {
         { src: "img/gallery/11.png", title: "Арт 11" },
         { src: "img/gallery/12.png", title: "Арт 12" },
 		{ src: "img/gallery/13.png", title: "Арт 13" },
+        { src: "img/gallery/14.png", title: "Арт 14" },
+        { src: "img/gallery/15.png", title: "Арт 15" },
+        { src: "img/gallery/16.png", title: "Арт 16" },
     ]
 };
