@@ -229,13 +229,18 @@ function initDraggableWidgets() {
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         
         function dragStart(e) {
-            // Если тапаем с телефона - берем координаты первого пальца
             const evt = e.type.includes('touch') ? e.touches[0] : e;
             if (!e.type.includes('touch')) e.preventDefault(); 
             
             widget.el.classList.add('is-dragging');
             
             const rect = widget.el.getBoundingClientRect();
+            
+            // --- ФИКС ТЕЛЕПОРТАЦИИ НА МОБИЛКАХ ---
+            // Жестко переводим в плавающий режим и сбрасываем margin
+            widget.el.style.position = 'fixed';
+            widget.el.style.margin = '0'; 
+            
             widget.el.style.left = rect.left + 'px';
             widget.el.style.top = rect.top + 'px';
             widget.el.style.right = 'auto'; 
@@ -247,7 +252,6 @@ function initDraggableWidgets() {
             document.addEventListener('mouseup', dragEnd);
             document.addEventListener('mousemove', dragMove);
             document.addEventListener('touchend', dragEnd);
-            // passive: false нужно, чтобы телефон не пытался скроллить страницу во время таскания виджета!
             document.addEventListener('touchmove', dragMove, { passive: false }); 
         }
 
@@ -450,7 +454,7 @@ function initLoFiCursor() {
         }, 2000);
     });
 }
-// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (CANVAS С СЕНСОРОМ) ===
+// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (С ФУНКЦИЕЙ ОТМЕНЫ) ===
 function initCanvasNotes() {
     const spawnBtn = document.createElement('button');
     spawnBtn.innerHTML = '📝 Новый скетч';
@@ -468,29 +472,30 @@ function initCanvasNotes() {
         const note = document.createElement('div');
         note.className = 'canvas-note';
         
-        // === ПУЛЕНЕПРОБИВАЕМЫЙ СПАВН ===
-        const noteWidth = 220; // Примерная полная ширина записки
+        // ФИКС СПАВНА: Используем самый надежный кроссбраузерный датчик ширины
+        const screenWidth = document.documentElement.clientWidth || window.innerWidth;
+        const noteWidth = 220; 
         
-        // Вычисляем X: берем ширину экрана, отнимаем ширину записки и делаем небольшой каскад
-        let startX = window.innerWidth - noteWidth - 20 - (noteCount % 5) * 20;
-        
-        // Если экран совсем узкий (мобилка) и места справа не осталось, паркуем слева
+        let startX = screenWidth - noteWidth - 20 - (noteCount % 5) * 20;
         if (startX < 20) {
             startX = 20 + (noteCount % 3) * 10;
         }
         
         note.style.top = (100 + (noteCount % 5) * 30) + 'px';
         note.style.left = startX + 'px';
-        note.style.right = 'auto'; // Строго отрываем от правого края, чтобы не было конфликта CSS!
+        note.style.right = 'auto'; 
 
+        // Добавили кнопку .canvas-undo
         note.innerHTML = `
             <div class="canvas-handle" title="Потяни меня"></div>
             <div class="canvas-pin"></div>
+            <div class="canvas-undo" title="Шаг назад">↩</div>
             <div class="canvas-close" title="Выкинуть в мусорку">✖</div>
             <canvas width="180" height="180" class="canvas-board"></canvas>
         `;
         document.body.appendChild(note);
 
+        // Логика закрытия
         note.querySelector('.canvas-close').addEventListener('click', () => {
             note.style.transform = 'scale(0)';
             setTimeout(() => note.remove(), 200);
@@ -534,10 +539,17 @@ function initCanvasNotes() {
         handle.addEventListener('mousedown', dragStart);
         handle.addEventListener('touchstart', dragStart, { passive: false });
 
-        // --- МЕХАНИКА РИСОВАНИЯ ---
+        // --- МЕХАНИКА РИСОВАНИЯ И ИСТОРИИ (UNDO) ---
         const canvas = note.querySelector('.canvas-board');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
+        
+        // Массив для хранения "фотографий" холста
+        let restoreArray = [];
+        let index = -1;
+
+        // Сохраняем чистый белый (прозрачный) лист при создании
+        saveState();
 
         ctx.strokeStyle = '#3b301a';
         ctx.lineWidth = 2.5;
@@ -547,14 +559,37 @@ function initCanvasNotes() {
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const evt = e.type.includes('touch') ? e.touches[0] : e;
-            return {
-                x: evt.clientX - rect.left,
-                y: evt.clientY - rect.top
-            };
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
         }
 
+        // Функция сохранения кадра
+        function saveState() {
+            // Если мы отменили пару шагов и начали рисовать заново - затираем будущее
+            if (index < restoreArray.length - 1) {
+                restoreArray.length = index + 1; 
+            }
+            restoreArray.push(canvas.toDataURL());
+            index++;
+        }
+
+        // Логика кнопки "Отмена"
+        note.querySelector('.canvas-undo').addEventListener('click', () => {
+            if (index > 0) {
+                index--; // Откатываем индекс
+                let canvasPic = new Image();
+                canvasPic.src = restoreArray[index];
+                canvasPic.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); // Чистим
+                    ctx.drawImage(canvasPic, 0, 0, canvas.width, canvas.height); // Вставляем прошлый кадр
+                }
+            } else if (index === 0) {
+                // Если дошли до нуля - просто чистим весь холст
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        });
+
         function startDraw(e) {
-            if (e.type.includes('touch')) e.preventDefault(); // Глушим скролл при рисовании
+            if (e.type.includes('touch')) e.preventDefault(); 
             isDrawing = true;
             const pos = getPos(e);
             ctx.beginPath();
@@ -565,21 +600,24 @@ function initCanvasNotes() {
 
         function draw(e) {
             if (!isDrawing) return;
-            if (e.type.includes('touch')) e.preventDefault(); // Глушим скролл при рисовании
+            if (e.type.includes('touch')) e.preventDefault(); 
             const pos = getPos(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
         }
 
-        function stopDraw() { isDrawing = false; }
+        function stopDraw() { 
+            if (isDrawing) {
+                isDrawing = false; 
+                saveState(); // Как только оторвали маркер - сохраняем кадр в историю!
+            }
+        }
 
-        // Слушаем мышь
         canvas.addEventListener('mousedown', startDraw);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDraw);
         canvas.addEventListener('mouseleave', stopDraw);
         
-        // Слушаем сенсор (телефоны/планшеты)
         canvas.addEventListener('touchstart', startDraw, { passive: false });
         canvas.addEventListener('touchmove', draw, { passive: false });
         canvas.addEventListener('touchend', stopDraw);
