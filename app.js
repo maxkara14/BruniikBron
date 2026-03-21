@@ -454,11 +454,10 @@ function initLoFiCursor() {
         }, 2000);
     });
 }
-// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (АБСОЛЮТНЫЙ ИНСТРУМЕНТАРИЙ V3.1 - ФИКС БАГОВ) ===
+// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (АБСОЛЮТНЫЙ ИНСТРУМЕНТАРИЙ V4 - ПЕРСИСТЕНТНАЯ МАШИНА ВРЕМЕНИ) ===
 function initCanvasNotes() {
     const btnGroup = document.createElement('div');
-    // Убрали длинный style.cssText и дали нормальный ID
-    btnGroup.id = 'canvas-btn-group'; 
+    btnGroup.id = 'canvas-btn-group';
     
     const spawnBtn = document.createElement('button');
     spawnBtn.innerHTML = '🎨 Новый скетч';
@@ -476,25 +475,20 @@ function initCanvasNotes() {
     let highestZ = 1600;
     const pinColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#3b301a'];
 
-    // 💾 СОХРАНЕНИЕ В БАРДАЧОК
+    // 💾 СОХРАНЕНИЕ В БАРДАЧОК (ТЕПЕРЬ СОХРАНЯЕТ ВСЮ ИСТОРИЮ ШАГОВ!)
     function saveAllNotesToStorage() {
         const notesData = [];
         document.querySelectorAll('.canvas-note').forEach(noteEl => {
-            const canvas = noteEl.querySelector('.canvas-board');
-            const overlays = [];
-            
-            noteEl.querySelectorAll('.note-checkbox-wrapper').forEach(cb => {
-                overlays.push({ type: 'checkbox', x: cb.style.left, y: cb.style.top, text: cb.querySelector('span').innerText, checked: cb.querySelector('input').checked });
-            });
-            noteEl.querySelectorAll('.note-text-wrapper').forEach(txt => {
-                overlays.push({ type: 'text', x: txt.style.left, y: txt.style.top, text: txt.innerText, color: txt.style.color, fontSize: txt.style.fontSize });
-            });
+            // Если записка еще не успела создать свою историю, пропускаем
+            if (!noteEl.bbHistory) return;
 
             notesData.push({
-                id: noteEl.dataset.id, x: noteEl.style.left, y: noteEl.style.top, z: noteEl.style.zIndex,
-                image: canvas ? canvas.toDataURL() : null,
-                overlays: overlays,
-                pinIdx: parseInt(noteEl.dataset.pinIdx || 0)
+                id: noteEl.dataset.id, 
+                x: noteEl.style.left, 
+                y: noteEl.style.top, 
+                z: noteEl.style.zIndex,
+                history: noteEl.bbHistory, // Сохраняем весь массив машины времени!
+                historyIndex: noteEl.bbHistoryIndex
             });
         });
         localStorage.setItem('bb_sketch_notes', JSON.stringify(notesData));
@@ -532,12 +526,9 @@ function initCanvasNotes() {
         }
         note.style.right = 'auto'; 
 
-        const currentPinIdx = data && data.pinIdx !== undefined ? data.pinIdx : 0;
-        note.dataset.pinIdx = currentPinIdx;
-
         note.innerHTML = `
             <div class="canvas-handle" title="Потяни меня"></div>
-            <div class="canvas-pin" style="background: ${pinColors[currentPinIdx]}" title="Кликни, чтобы сменить цвет"></div>
+            <div class="canvas-pin" title="Кликни, чтобы сменить цвет"></div>
             <div class="canvas-palette-toggle" title="Открыть/Закрыть панель инструментов">🎨</div>
             <div class="canvas-close" title="Выкинуть в мусорку">✖</div>
             
@@ -563,13 +554,18 @@ function initCanvasNotes() {
         `;
         document.body.appendChild(note);
 
-        // --- ГЛОБАЛЬНАЯ ИСТОРИЯ (МАШИНА ВРЕМЕНИ) ---
-        let history = [];
-        let historyIndex = -1;
         const canvas = note.querySelector('.canvas-board');
         const ctx = canvas.getContext('2d');
         const overlayContainer = note.querySelector('.overlay-container');
         const pin = note.querySelector('.canvas-pin');
+
+        // --- ГЛОБАЛЬНАЯ ИСТОРИЯ (ПЕРСИСТЕНТНАЯ МАШИНА ВРЕМЕНИ) ---
+        let history = data && data.history ? data.history : [];
+        let historyIndex = data && data.historyIndex !== undefined ? data.historyIndex : -1;
+
+        // Привязываем историю к HTML-элементу для доступа при сохранении
+        note.bbHistory = history;
+        note.bbHistoryIndex = historyIndex;
 
         function saveState() {
             if (historyIndex < history.length - 1) history.length = historyIndex + 1; 
@@ -585,25 +581,35 @@ function initCanvasNotes() {
             history.push({
                 image: canvas.toDataURL(),
                 overlays: overlaysState,
-                pinIdx: parseInt(note.dataset.pinIdx)
+                pinIdx: parseInt(note.dataset.pinIdx || 0)
             });
-            historyIndex++;
+
+            // Защита от переполнения памяти телефона (храним только последние 30 действий)
+            if (history.length > 30) {
+                history.shift(); 
+            } else {
+                historyIndex++;
+            }
+
+            note.bbHistory = history;
+            note.bbHistoryIndex = historyIndex;
             saveAllNotesToStorage();
         }
 
         // Функция восстанавливает записку из выбранного слепка
-        function applyState(state) {
+        function applyState(state, isRestoring = false) {
+            if (!state) return;
+
             let img = new Image(); img.src = state.image;
             img.onload = () => {
-                // ФИКС ЛАСТИКА: Временно отключаем режим вырезания, чтобы нарисовать слепок!
                 const prevMode = ctx.globalCompositeOperation;
                 ctx.globalCompositeOperation = 'source-over';
                 
                 ctx.clearRect(0, 0, canvas.width, canvas.height); 
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
                 
-                // Возвращаем режим инструмента обратно (если был выбран ластик)
                 ctx.globalCompositeOperation = prevMode;
+                if (!isRestoring) saveAllNotesToStorage();
             };
             
             overlayContainer.innerHTML = '';
@@ -614,26 +620,55 @@ function initCanvasNotes() {
 
             note.dataset.pinIdx = state.pinIdx;
             pin.style.background = pinColors[state.pinIdx];
+
+            note.bbHistory = history;
+            note.bbHistoryIndex = historyIndex;
         }
 
         note.querySelector('.canvas-undo').addEventListener('click', () => {
             if (historyIndex > 0) {
                 historyIndex--; 
+                note.bbHistoryIndex = historyIndex;
                 applyState(history[historyIndex]);
-                saveAllNotesToStorage();
             }
         });
         note.querySelector('.canvas-redo').addEventListener('click', () => {
             if (historyIndex < history.length - 1) {
                 historyIndex++; 
+                note.bbHistoryIndex = historyIndex;
                 applyState(history[historyIndex]);
-                saveAllNotesToStorage();
             }
         });
 
+        // --- ВОССТАНОВЛЕНИЕ ПРИ ЗАГРУЗКЕ САЙТА ---
+        if (history.length > 0 && historyIndex >= 0) {
+            // Если есть сохраненная машина времени - запускаем её!
+            applyState(history[historyIndex], true);
+        } else if (data && data.image) {
+            // Резервная совместимость для старых сохранений
+            let img = new Image(); img.src = data.image;
+            img.onload = () => { 
+                ctx.drawImage(img, 0, 0); 
+                if (data.overlays) {
+                    data.overlays.forEach(ov => {
+                        if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true);
+                        else if (ov.type === 'text') createTextOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.color, ov.fontSize, true);
+                    });
+                }
+                note.dataset.pinIdx = data.pinIdx !== undefined ? data.pinIdx : 0;
+                pin.style.background = pinColors[note.dataset.pinIdx];
+                saveState(); // Записываем этот слепок как Шаг №0
+            };
+        } else { 
+            // Абсолютно новая записка
+            note.dataset.pinIdx = 0;
+            pin.style.background = pinColors[0];
+            saveState(); // Шаг №0 (чистый лист)
+        }
+
         // --- ИНТЕРАКТИВНЫЙ ПИН (С СЕНСОРОМ) ---
         function changePinColor(e) {
-            e.stopPropagation(); // ФИКС ТАСКАНИЯ: Блокируем клик, чтобы записка не пыталась перетаскиваться!
+            e.stopPropagation(); 
             if (e && e.type.includes('touch')) e.preventDefault();
             let idx = parseInt(note.dataset.pinIdx);
             idx = (idx + 1) % pinColors.length;
@@ -641,7 +676,7 @@ function initCanvasNotes() {
             pin.style.background = pinColors[idx];
             saveState(); 
         }
-        pin.addEventListener('mousedown', e => e.stopPropagation()); // На всякий случай блокируем мышь
+        pin.addEventListener('mousedown', e => e.stopPropagation()); 
         pin.addEventListener('click', changePinColor);
         pin.addEventListener('touchstart', changePinColor, { passive: false });
 
@@ -677,7 +712,7 @@ function initCanvasNotes() {
         function dragEnd() {
             document.removeEventListener('mouseup', dragEnd); document.removeEventListener('mousemove', dragMove);
             document.removeEventListener('touchend', dragEnd); document.removeEventListener('touchmove', dragMove);
-            saveAllNotesToStorage(); 
+            saveAllNotesToStorage(); // Смена позиции сохраняется без создания нового шага отмены (это удобно!)
         }
         handle.addEventListener('mousedown', dragStart); handle.addEventListener('touchstart', dragStart, { passive: false });
 
@@ -706,7 +741,7 @@ function initCanvasNotes() {
             function innerDragEnd() {
                 document.removeEventListener('mouseup', innerDragEnd); document.removeEventListener('mousemove', innerDragMove);
                 document.removeEventListener('touchend', innerDragEnd); document.removeEventListener('touchmove', innerDragMove);
-                if (isDragged) saveState(); 
+                if (isDragged) saveState(); // Сохраняем в историю ТОЛЬКО если мы реально сдвинули элемент
             }
             el.addEventListener('mousedown', innerDragStart); el.addEventListener('touchstart', innerDragStart, { passive: false });
         }
@@ -745,23 +780,6 @@ function initCanvasNotes() {
             makeInnerDraggable(txtWrap); 
             
             if (!isRestoring) saveState();
-        }
-
-        // ВОССТАНОВЛЕНИЕ ПРИ ЗАГРУЗКЕ САЙТА
-        if (data && data.image) {
-            let img = new Image(); img.src = data.image;
-            img.onload = () => { 
-                ctx.drawImage(img, 0, 0); 
-                if (data.overlays) {
-                    data.overlays.forEach(ov => {
-                        if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true);
-                        else if (ov.type === 'text') createTextOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.color, ov.fontSize, true);
-                    });
-                }
-                saveState(); 
-            };
-        } else { 
-            saveState(); 
         }
 
         // --- МЕХАНИКА CANVAS ---
@@ -812,7 +830,7 @@ function initCanvasNotes() {
         note.querySelector('.canvas-clear').addEventListener('click', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             overlayContainer.innerHTML = ''; 
-            saveState(); 
+            saveState(); // Сжигание холста - это тоже действие
         });
 
         function getPos(e) {
@@ -854,7 +872,7 @@ function initCanvasNotes() {
         function stopDraw() { 
             if (isDrawing) {
                 isDrawing = false; 
-                saveState(); 
+                saveState(); // Закончили штрих - сохранили
             }
         }
 
