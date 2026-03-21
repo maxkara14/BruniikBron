@@ -454,7 +454,7 @@ function initLoFiCursor() {
         }, 2000);
     });
 }
-// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (АБСОЛЮТНЫЙ ИНСТРУМЕНТАРИЙ V4 - ПЕРСИСТЕНТНАЯ МАШИНА ВРЕМЕНИ) ===
+// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (АБСОЛЮТНЫЙ ИНСТРУМЕНТАРИЙ V5.1 - ФИКС МАСШТАБА) ===
 function initCanvasNotes() {
     const btnGroup = document.createElement('div');
     btnGroup.id = 'canvas-btn-group';
@@ -475,19 +475,13 @@ function initCanvasNotes() {
     let highestZ = 1600;
     const pinColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#3b301a'];
 
-    // 💾 СОХРАНЕНИЕ В БАРДАЧОК (ТЕПЕРЬ СОХРАНЯЕТ ВСЮ ИСТОРИЮ ШАГОВ!)
     function saveAllNotesToStorage() {
         const notesData = [];
         document.querySelectorAll('.canvas-note').forEach(noteEl => {
-            // Если записка еще не успела создать свою историю, пропускаем
             if (!noteEl.bbHistory) return;
-
             notesData.push({
-                id: noteEl.dataset.id, 
-                x: noteEl.style.left, 
-                y: noteEl.style.top, 
-                z: noteEl.style.zIndex,
-                history: noteEl.bbHistory, // Сохраняем весь массив машины времени!
+                id: noteEl.dataset.id, x: noteEl.style.left, y: noteEl.style.top, z: noteEl.style.zIndex,
+                history: noteEl.bbHistory, 
                 historyIndex: noteEl.bbHistoryIndex
             });
         });
@@ -506,7 +500,6 @@ function initCanvasNotes() {
         }
     });
 
-    // ФАБРИКА СТИКЕРОВ
     function createNote(data = null) {
         const id = data && data.id ? data.id : 'note_' + Date.now();
         const note = document.createElement('div');
@@ -558,12 +551,11 @@ function initCanvasNotes() {
         const ctx = canvas.getContext('2d');
         const overlayContainer = note.querySelector('.overlay-container');
         const pin = note.querySelector('.canvas-pin');
+        
+        let activeOverlay = null;
 
-        // --- ГЛОБАЛЬНАЯ ИСТОРИЯ (ПЕРСИСТЕНТНАЯ МАШИНА ВРЕМЕНИ) ---
         let history = data && data.history ? data.history : [];
         let historyIndex = data && data.historyIndex !== undefined ? data.historyIndex : -1;
-
-        // Привязываем историю к HTML-элементу для доступа при сохранении
         note.bbHistory = history;
         note.bbHistoryIndex = historyIndex;
 
@@ -572,7 +564,7 @@ function initCanvasNotes() {
             
             const overlaysState = [];
             note.querySelectorAll('.note-checkbox-wrapper').forEach(cb => {
-                overlaysState.push({ type: 'checkbox', x: cb.style.left, y: cb.style.top, text: cb.querySelector('span').innerText, checked: cb.querySelector('input').checked });
+                overlaysState.push({ type: 'checkbox', x: cb.style.left, y: cb.style.top, text: cb.querySelector('span').innerText, checked: cb.querySelector('input').checked, fontSize: cb.style.fontSize });
             });
             note.querySelectorAll('.note-text-wrapper').forEach(txt => {
                 overlaysState.push({ type: 'text', x: txt.style.left, y: txt.style.top, text: txt.innerText, color: txt.style.color, fontSize: txt.style.fontSize });
@@ -584,89 +576,64 @@ function initCanvasNotes() {
                 pinIdx: parseInt(note.dataset.pinIdx || 0)
             });
 
-            // Защита от переполнения памяти телефона (храним только последние 30 действий)
-            if (history.length > 30) {
-                history.shift(); 
-            } else {
-                historyIndex++;
-            }
-
-            note.bbHistory = history;
-            note.bbHistoryIndex = historyIndex;
+            if (history.length > 30) history.shift(); else historyIndex++;
+            note.bbHistory = history; note.bbHistoryIndex = historyIndex;
             saveAllNotesToStorage();
         }
 
-        // Функция восстанавливает записку из выбранного слепка
         function applyState(state, isRestoring = false) {
             if (!state) return;
+            if (activeOverlay) { activeOverlay.classList.remove('is-selected'); activeOverlay = null; }
 
             let img = new Image(); img.src = state.image;
             img.onload = () => {
                 const prevMode = ctx.globalCompositeOperation;
                 ctx.globalCompositeOperation = 'source-over';
-                
                 ctx.clearRect(0, 0, canvas.width, canvas.height); 
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
-                
                 ctx.globalCompositeOperation = prevMode;
                 if (!isRestoring) saveAllNotesToStorage();
             };
             
             overlayContainer.innerHTML = '';
             state.overlays.forEach(ov => {
-                if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true);
+                if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true, ov.fontSize);
                 else if (ov.type === 'text') createTextOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.color, ov.fontSize, true);
             });
 
             note.dataset.pinIdx = state.pinIdx;
             pin.style.background = pinColors[state.pinIdx];
-
-            note.bbHistory = history;
-            note.bbHistoryIndex = historyIndex;
+            note.bbHistory = history; note.bbHistoryIndex = historyIndex;
         }
 
         note.querySelector('.canvas-undo').addEventListener('click', () => {
-            if (historyIndex > 0) {
-                historyIndex--; 
-                note.bbHistoryIndex = historyIndex;
-                applyState(history[historyIndex]);
-            }
+            if (historyIndex > 0) { historyIndex--; note.bbHistoryIndex = historyIndex; applyState(history[historyIndex]); }
         });
         note.querySelector('.canvas-redo').addEventListener('click', () => {
-            if (historyIndex < history.length - 1) {
-                historyIndex++; 
-                note.bbHistoryIndex = historyIndex;
-                applyState(history[historyIndex]);
-            }
+            if (historyIndex < history.length - 1) { historyIndex++; note.bbHistoryIndex = historyIndex; applyState(history[historyIndex]); }
         });
 
-        // --- ВОССТАНОВЛЕНИЕ ПРИ ЗАГРУЗКЕ САЙТА ---
         if (history.length > 0 && historyIndex >= 0) {
-            // Если есть сохраненная машина времени - запускаем её!
             applyState(history[historyIndex], true);
         } else if (data && data.image) {
-            // Резервная совместимость для старых сохранений
             let img = new Image(); img.src = data.image;
             img.onload = () => { 
                 ctx.drawImage(img, 0, 0); 
                 if (data.overlays) {
                     data.overlays.forEach(ov => {
-                        if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true);
+                        if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true, ov.fontSize);
                         else if (ov.type === 'text') createTextOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.color, ov.fontSize, true);
                     });
                 }
                 note.dataset.pinIdx = data.pinIdx !== undefined ? data.pinIdx : 0;
                 pin.style.background = pinColors[note.dataset.pinIdx];
-                saveState(); // Записываем этот слепок как Шаг №0
+                saveState(); 
             };
         } else { 
-            // Абсолютно новая записка
-            note.dataset.pinIdx = 0;
-            pin.style.background = pinColors[0];
-            saveState(); // Шаг №0 (чистый лист)
+            note.dataset.pinIdx = 0; pin.style.background = pinColors[0];
+            saveState(); 
         }
 
-        // --- ИНТЕРАКТИВНЫЙ ПИН (С СЕНСОРОМ) ---
         function changePinColor(e) {
             e.stopPropagation(); 
             if (e && e.type.includes('touch')) e.preventDefault();
@@ -690,10 +657,8 @@ function initCanvasNotes() {
             setTimeout(() => { note.remove(); saveAllNotesToStorage(); }, 200);
         });
 
-        // --- ПЕРЕТАСКИВАНИЕ ЗАПИСКИ ---
         const handle = note.querySelector('.canvas-handle');
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-        
         function dragStart(e) {
             const evt = e.type.includes('touch') ? e.touches[0] : e;
             if (!e.type.includes('touch')) e.preventDefault();
@@ -703,8 +668,7 @@ function initCanvasNotes() {
             document.addEventListener('touchend', dragEnd); document.addEventListener('touchmove', dragMove, { passive: false });
         }
         function dragMove(e) {
-            e.preventDefault();
-            const evt = e.type.includes('touch') ? e.touches[0] : e;
+            e.preventDefault(); const evt = e.type.includes('touch') ? e.touches[0] : e;
             pos1 = pos3 - evt.clientX; pos2 = pos4 - evt.clientY;
             pos3 = evt.clientX; pos4 = evt.clientY;
             note.style.top = (note.offsetTop - pos2) + "px"; note.style.left = (note.offsetLeft - pos1) + "px";
@@ -712,45 +676,58 @@ function initCanvasNotes() {
         function dragEnd() {
             document.removeEventListener('mouseup', dragEnd); document.removeEventListener('mousemove', dragMove);
             document.removeEventListener('touchend', dragEnd); document.removeEventListener('touchmove', dragMove);
-            saveAllNotesToStorage(); // Смена позиции сохраняется без создания нового шага отмены (это удобно!)
+            saveAllNotesToStorage(); 
         }
         handle.addEventListener('mousedown', dragStart); handle.addEventListener('touchstart', dragStart, { passive: false });
 
-        // --- УМНАЯ ПОДВЕСКА ДЛЯ ТЕКСТА/ЧЕКБОКСОВ ---
         function makeInnerDraggable(el) {
-            let p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+            let startX, startY, initialLeft, initialTop;
             let isDragged = false;
+            
             function innerDragStart(e) {
                 if (e.target.tagName === 'INPUT') return; 
                 e.stopPropagation(); 
                 const evt = e.type.includes('touch') ? e.touches[0] : e;
                 if (!e.type.includes('touch')) e.preventDefault();
-                p3 = evt.clientX; p4 = evt.clientY;
+                
+                if (activeOverlay) activeOverlay.classList.remove('is-selected');
+                activeOverlay = el;
+                activeOverlay.classList.add('is-selected');
+                
+                const currentSizePx = parseFloat(el.style.fontSize) || 19.5;
+                note.querySelector('.canvas-size').value = (currentSizePx - 12) / 3;
+
+                startX = evt.clientX; startY = evt.clientY;
+                initialLeft = parseFloat(el.style.left) || 0; 
+                initialTop = parseFloat(el.style.top) || 0;
                 isDragged = false;
+                
                 document.addEventListener('mouseup', innerDragEnd); document.addEventListener('mousemove', innerDragMove);
                 document.addEventListener('touchend', innerDragEnd); document.addEventListener('touchmove', innerDragMove, { passive: false });
             }
             function innerDragMove(e) {
                 e.preventDefault();
                 const evt = e.type.includes('touch') ? e.touches[0] : e;
-                p1 = p3 - evt.clientX; p2 = p4 - evt.clientY;
-                p3 = evt.clientX; p4 = evt.clientY;
-                if (Math.abs(p1) > 2 || Math.abs(p2) > 2) isDragged = true; 
-                el.style.top = (el.offsetTop - p2) + "px"; el.style.left = (el.offsetLeft - p1) + "px";
+                const dx = evt.clientX - startX;
+                const dy = evt.clientY - startY;
+                if (Math.abs(dx) > 2 || Math.abs(dy) > 2) isDragged = true; 
+                
+                el.style.left = (initialLeft + dx) + "px"; 
+                el.style.top = (initialTop + dy) + "px";
             }
             function innerDragEnd() {
                 document.removeEventListener('mouseup', innerDragEnd); document.removeEventListener('mousemove', innerDragMove);
                 document.removeEventListener('touchend', innerDragEnd); document.removeEventListener('touchmove', innerDragMove);
-                if (isDragged) saveState(); // Сохраняем в историю ТОЛЬКО если мы реально сдвинули элемент
+                if (isDragged) saveState(); 
             }
             el.addEventListener('mousedown', innerDragStart); el.addEventListener('touchstart', innerDragStart, { passive: false });
         }
 
-        // --- СОЗДАНИЕ ТЕКСТА И ЗАДАЧ ---
-        function createCheckboxOverlay(x, y, text, isChecked, isRestoring = false) {
+        function createCheckboxOverlay(x, y, text, isChecked, isRestoring = false, fontSize = "19.5px") {
             const cbWrap = document.createElement('div'); 
             cbWrap.className = 'note-checkbox-wrapper';
             cbWrap.style.left = x + 'px'; cbWrap.style.top = y + 'px';
+            cbWrap.style.fontSize = fontSize;
             cbWrap.innerHTML = `<input type="checkbox" ${isChecked ? 'checked' : ''}> <span>${text}</span>`;
             
             const inputBox = cbWrap.querySelector('input');
@@ -758,11 +735,13 @@ function initCanvasNotes() {
             inputBox.addEventListener('mousedown', e => e.stopPropagation()); 
             inputBox.addEventListener('touchstart', e => e.stopPropagation());
             
-            cbWrap.addEventListener('dblclick', () => { cbWrap.remove(); saveState(); }); 
+            cbWrap.addEventListener('dblclick', () => { 
+                if (activeOverlay === cbWrap) activeOverlay = null;
+                cbWrap.remove(); saveState(); 
+            }); 
             
             overlayContainer.appendChild(cbWrap);
             makeInnerDraggable(cbWrap); 
-            
             if (!isRestoring) saveState();
         }
 
@@ -770,19 +749,19 @@ function initCanvasNotes() {
             const txtWrap = document.createElement('div');
             txtWrap.className = 'note-text-wrapper';
             txtWrap.style.left = x + 'px'; txtWrap.style.top = y + 'px';
-            txtWrap.style.color = color;
-            txtWrap.style.fontSize = sizeStr;
+            txtWrap.style.color = color; txtWrap.style.fontSize = sizeStr;
             txtWrap.innerText = text;
             
-            txtWrap.addEventListener('dblclick', () => { txtWrap.remove(); saveState(); }); 
+            txtWrap.addEventListener('dblclick', () => { 
+                if (activeOverlay === txtWrap) activeOverlay = null;
+                txtWrap.remove(); saveState(); 
+            }); 
             
             overlayContainer.appendChild(txtWrap);
             makeInnerDraggable(txtWrap); 
-            
             if (!isRestoring) saveState();
         }
 
-        // --- МЕХАНИКА CANVAS ---
         let isDrawing = false;
         let currentColor = '#3b301a';
         let currentSize = 2.5;
@@ -794,33 +773,36 @@ function initCanvasNotes() {
             toolBtns.forEach(b => b.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');
 
-            if (toolName === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.strokeStyle = currentColor;
-            }
+            if (toolName === 'eraser') ctx.globalCompositeOperation = 'destination-out';
+            else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = currentColor; }
         }
 
         function updateBrushSize() {
-            ctx.lineWidth = currentSize;
-            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.lineWidth = currentSize; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         }
         updateBrushSize();
 
         const colors = note.querySelectorAll('.canvas-color');
         colors.forEach(col => {
             col.addEventListener('click', () => {
-                colors.forEach(c => c.classList.remove('active'));
-                col.classList.add('active');
+                colors.forEach(c => c.classList.remove('active')); col.classList.add('active');
                 currentColor = col.dataset.color;
-                setActiveTool('draw', null); 
-                updateBrushSize();
+                setActiveTool('draw', null); updateBrushSize();
             });
         });
 
-        note.querySelector('.canvas-size').addEventListener('input', (e) => {
-            currentSize = e.target.value; updateBrushSize();
+        const slider = note.querySelector('.canvas-size');
+        slider.addEventListener('input', (e) => {
+            if (activeOverlay) {
+                // Изменяем ТОЛЬКО размер шрифта родительского контейнера. CSS сделает всё остальное!
+                const newSize = (e.target.value * 3 + 12) + 'px';
+                activeOverlay.style.fontSize = newSize;
+            } else {
+                currentSize = e.target.value; updateBrushSize();
+            }
+        });
+        slider.addEventListener('change', (e) => {
+            if (activeOverlay) saveState(); 
         });
 
         note.querySelector('.canvas-text-btn').addEventListener('click', function() { setActiveTool('text', this); });
@@ -830,8 +812,14 @@ function initCanvasNotes() {
         note.querySelector('.canvas-clear').addEventListener('click', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             overlayContainer.innerHTML = ''; 
-            saveState(); // Сжигание холста - это тоже действие
+            saveState(); 
         });
+
+        function setOverlaysInteractive(interactive) {
+            note.querySelectorAll('.note-checkbox-wrapper, .note-text-wrapper').forEach(el => {
+                el.style.pointerEvents = interactive ? 'auto' : 'none';
+            });
+        }
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
@@ -843,22 +831,25 @@ function initCanvasNotes() {
             if (e.type.includes('touch')) e.preventDefault(); 
             const pos = getPos(e);
 
+            if (activeOverlay) {
+                activeOverlay.classList.remove('is-selected'); activeOverlay = null;
+                slider.value = currentSize; 
+            }
+
             if (currentTool === 'text') {
                 const text = prompt("Введите текст:");
-                if (text) {
-                    const fontSize = (currentSize * 3) + 12 + 'px'; 
-                    createTextOverlay(pos.x, pos.y, text, currentColor, fontSize);
-                }
+                if (text) createTextOverlay(pos.x, pos.y, text, currentColor, (currentSize * 3) + 12 + 'px');
                 return;
             }
 
             if (currentTool === 'checkbox') {
                 const text = prompt("Текст задачи:");
-                if (text) createCheckboxOverlay(pos.x, pos.y, text, false);
+                if (text) createCheckboxOverlay(pos.x, pos.y, text, false, false, (currentSize * 3) + 12 + 'px');
                 return;
             }
 
             isDrawing = true;
+            setOverlaysInteractive(false); 
             ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
         }
 
@@ -872,7 +863,8 @@ function initCanvasNotes() {
         function stopDraw() { 
             if (isDrawing) {
                 isDrawing = false; 
-                saveState(); // Закончили штрих - сохранили
+                setOverlaysInteractive(true); 
+                saveState(); 
             }
         }
 
@@ -885,7 +877,6 @@ function initCanvasNotes() {
     spawnBtn.addEventListener('click', () => { createNote(); saveAllNotesToStorage(); });
     loadNotes();
 }
-
 // === ЗАПУСК ВСЕХ ДВИЖКОВ ПРИ СТАРТЕ ===
 document.addEventListener('DOMContentLoaded', () => {
     // Восстановленные базовые модули:
