@@ -518,3 +518,23 @@ section h2 {
     z-index: 10; /* Выводим поверх ручки перетаскивания */
 }
 .canvas-pin:hover { transform: translateX(-50%) scale(1.3); }
+/* === ГРУППА КНОПОК СКЕТЧА (АДАПТИВ) === */
+#canvas-btn-group {
+    position: fixed; bottom: 20px; left: 20px; z-index: 2000; display: flex; gap: 10px;
+}
+
+/* Мобильная подвеска для кнопок и светлячков */
+@media (max-width: 600px) {
+    #canvas-btn-group {
+        /* Ставим кнопки столбиком. "Сжечь всё" будет сверху, чтобы случайно не нажать */
+        flex-direction: column-reverse; 
+        bottom: 15px; left: 15px; gap: 8px;
+    }
+    #canvas-btn-group .btn {
+        padding: 6px 12px; font-size: 12px;
+    }
+    #firefly-score-board {
+        /* Чуть уменьшаем и сдвигаем счетчик искр */
+        bottom: 15px; right: 15px; padding: 6px 10px; font-size: 12px;
+    }
+}
