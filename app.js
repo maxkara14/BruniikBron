@@ -454,107 +454,365 @@ function initLoFiCursor() {
         }, 2000);
     });
 }
-// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (С ФУНКЦИЕЙ ОТМЕНЫ) ===
+// === МЕХАНИКА СКЕТЧ-ЗАПИСОК (АБСОЛЮТНЫЙ ИНСТРУМЕНТАРИЙ V3.1 - ФИКС БАГОВ) ===
 function initCanvasNotes() {
+    const btnGroup = document.createElement('div');
+    btnGroup.style.cssText = "position: fixed; bottom: 20px; left: 20px; z-index: 2000; display: flex; gap: 10px;";
+    
     const spawnBtn = document.createElement('button');
-    spawnBtn.innerHTML = '📝 Новый скетч';
+    spawnBtn.innerHTML = '🎨 Новый скетч';
     spawnBtn.className = 'btn'; 
-    spawnBtn.style.position = 'fixed';
-    spawnBtn.style.bottom = '20px';
-    spawnBtn.style.left = '20px';
-    spawnBtn.style.zIndex = '2000';
-    document.body.appendChild(spawnBtn);
+    
+    const clearAllBtn = document.createElement('button');
+    clearAllBtn.innerHTML = '🔥 Сжечь всё';
+    clearAllBtn.className = 'btn btn-danger';
+    clearAllBtn.title = "Удалить все записки навсегда";
+    
+    btnGroup.appendChild(spawnBtn);
+    btnGroup.appendChild(clearAllBtn);
+    document.body.appendChild(btnGroup);
 
-    let noteCount = 0;
+    let highestZ = 1600;
+    const pinColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#3b301a'];
 
-    spawnBtn.addEventListener('click', () => {
-        noteCount++;
+    // 💾 СОХРАНЕНИЕ В БАРДАЧОК
+    function saveAllNotesToStorage() {
+        const notesData = [];
+        document.querySelectorAll('.canvas-note').forEach(noteEl => {
+            const canvas = noteEl.querySelector('.canvas-board');
+            const overlays = [];
+            
+            noteEl.querySelectorAll('.note-checkbox-wrapper').forEach(cb => {
+                overlays.push({ type: 'checkbox', x: cb.style.left, y: cb.style.top, text: cb.querySelector('span').innerText, checked: cb.querySelector('input').checked });
+            });
+            noteEl.querySelectorAll('.note-text-wrapper').forEach(txt => {
+                overlays.push({ type: 'text', x: txt.style.left, y: txt.style.top, text: txt.innerText, color: txt.style.color, fontSize: txt.style.fontSize });
+            });
+
+            notesData.push({
+                id: noteEl.dataset.id, x: noteEl.style.left, y: noteEl.style.top, z: noteEl.style.zIndex,
+                image: canvas ? canvas.toDataURL() : null,
+                overlays: overlays,
+                pinIdx: parseInt(noteEl.dataset.pinIdx || 0)
+            });
+        });
+        localStorage.setItem('bb_sketch_notes', JSON.stringify(notesData));
+    }
+
+    function loadNotes() {
+        const saved = localStorage.getItem('bb_sketch_notes');
+        if (saved) JSON.parse(saved).forEach(data => createNote(data));
+    }
+
+    clearAllBtn.addEventListener('click', () => {
+        if(confirm("Точно удалить все скетчи? Эту магию нельзя будет отменить!")) {
+            document.querySelectorAll('.canvas-note').forEach(n => n.remove());
+            localStorage.removeItem('bb_sketch_notes');
+        }
+    });
+
+    // ФАБРИКА СТИКЕРОВ
+    function createNote(data = null) {
+        const id = data && data.id ? data.id : 'note_' + Date.now();
         const note = document.createElement('div');
         note.className = 'canvas-note';
+        note.dataset.id = id;
         
-        // ФИКС СПАВНА: Используем самый надежный кроссбраузерный датчик ширины
-        const screenWidth = document.documentElement.clientWidth || window.innerWidth;
-        const noteWidth = 220; 
-        
-        let startX = screenWidth - noteWidth - 20 - (noteCount % 5) * 20;
-        if (startX < 20) {
-            startX = 20 + (noteCount % 3) * 10;
+        highestZ++;
+        note.style.zIndex = data && data.z ? data.z : highestZ;
+
+        if (data && data.x && data.y) {
+            note.style.left = data.x; note.style.top = data.y;
+        } else {
+            const screenWidth = document.documentElement.clientWidth || window.innerWidth;
+            let startX = screenWidth - 260 - Math.random() * 50;
+            if (startX < 20) startX = 20 + Math.random() * 20;
+            note.style.left = startX + 'px'; note.style.top = (100 + Math.random() * 50) + 'px';
         }
-        
-        note.style.top = (100 + (noteCount % 5) * 30) + 'px';
-        note.style.left = startX + 'px';
         note.style.right = 'auto'; 
 
-        // Добавили кнопку .canvas-undo
+        const currentPinIdx = data && data.pinIdx !== undefined ? data.pinIdx : 0;
+        note.dataset.pinIdx = currentPinIdx;
+
         note.innerHTML = `
             <div class="canvas-handle" title="Потяни меня"></div>
-            <div class="canvas-pin"></div>
-            <div class="canvas-undo" title="Шаг назад">↩</div>
+            <div class="canvas-pin" style="background: ${pinColors[currentPinIdx]}" title="Кликни, чтобы сменить цвет"></div>
+            <div class="canvas-palette-toggle" title="Открыть/Закрыть панель инструментов">🎨</div>
             <div class="canvas-close" title="Выкинуть в мусорку">✖</div>
-            <canvas width="180" height="180" class="canvas-board"></canvas>
+            
+            <div class="overlay-container"></div>
+            <canvas width="200" height="180" class="canvas-board"></canvas>
+
+            <div class="canvas-toolbar">
+                <div class="canvas-color active" style="background: #3b301a;" data-color="#3b301a"></div>
+                <div class="canvas-color" style="background: #ef4444;" data-color="#ef4444"></div>
+                <div class="canvas-color" style="background: #3b82f6;" data-color="#3b82f6"></div>
+                <div class="canvas-color" style="background: #10b981;" data-color="#10b981"></div>
+                <div class="canvas-color" style="background: #f59e0b;" data-color="#f59e0b"></div>
+                
+                <input type="range" class="canvas-size" min="1" max="15" value="2.5" title="Размер кисти/шрифта">
+                
+                <button class="canvas-tool-btn canvas-text-btn" title="Написать текст">🔤</button>
+                <button class="canvas-tool-btn canvas-check-btn" title="Добавить задачу">✅</button>
+                <button class="canvas-tool-btn canvas-eraser" title="Ластик">🧽</button>
+                <button class="canvas-tool-btn canvas-undo" title="Шаг назад">↩</button>
+                <button class="canvas-tool-btn canvas-redo" title="Шаг вперед">↪</button>
+                <button class="canvas-tool-btn canvas-clear" title="Очистить холст">🗑️</button>
+            </div>
         `;
         document.body.appendChild(note);
 
-        // Логика закрытия
-        note.querySelector('.canvas-close').addEventListener('click', () => {
-            note.style.transform = 'scale(0)';
-            setTimeout(() => note.remove(), 200);
+        // --- ГЛОБАЛЬНАЯ ИСТОРИЯ (МАШИНА ВРЕМЕНИ) ---
+        let history = [];
+        let historyIndex = -1;
+        const canvas = note.querySelector('.canvas-board');
+        const ctx = canvas.getContext('2d');
+        const overlayContainer = note.querySelector('.overlay-container');
+        const pin = note.querySelector('.canvas-pin');
+
+        function saveState() {
+            if (historyIndex < history.length - 1) history.length = historyIndex + 1; 
+            
+            const overlaysState = [];
+            note.querySelectorAll('.note-checkbox-wrapper').forEach(cb => {
+                overlaysState.push({ type: 'checkbox', x: cb.style.left, y: cb.style.top, text: cb.querySelector('span').innerText, checked: cb.querySelector('input').checked });
+            });
+            note.querySelectorAll('.note-text-wrapper').forEach(txt => {
+                overlaysState.push({ type: 'text', x: txt.style.left, y: txt.style.top, text: txt.innerText, color: txt.style.color, fontSize: txt.style.fontSize });
+            });
+
+            history.push({
+                image: canvas.toDataURL(),
+                overlays: overlaysState,
+                pinIdx: parseInt(note.dataset.pinIdx)
+            });
+            historyIndex++;
+            saveAllNotesToStorage();
+        }
+
+        // Функция восстанавливает записку из выбранного слепка
+        function applyState(state) {
+            let img = new Image(); img.src = state.image;
+            img.onload = () => {
+                // ФИКС ЛАСТИКА: Временно отключаем режим вырезания, чтобы нарисовать слепок!
+                const prevMode = ctx.globalCompositeOperation;
+                ctx.globalCompositeOperation = 'source-over';
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height); 
+                
+                // Возвращаем режим инструмента обратно (если был выбран ластик)
+                ctx.globalCompositeOperation = prevMode;
+            };
+            
+            overlayContainer.innerHTML = '';
+            state.overlays.forEach(ov => {
+                if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true);
+                else if (ov.type === 'text') createTextOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.color, ov.fontSize, true);
+            });
+
+            note.dataset.pinIdx = state.pinIdx;
+            pin.style.background = pinColors[state.pinIdx];
+        }
+
+        note.querySelector('.canvas-undo').addEventListener('click', () => {
+            if (historyIndex > 0) {
+                historyIndex--; 
+                applyState(history[historyIndex]);
+                saveAllNotesToStorage();
+            }
+        });
+        note.querySelector('.canvas-redo').addEventListener('click', () => {
+            if (historyIndex < history.length - 1) {
+                historyIndex++; 
+                applyState(history[historyIndex]);
+                saveAllNotesToStorage();
+            }
         });
 
-        // --- МЕХАНИКА ПЕРЕТАСКИВАНИЯ ---
+        // --- ИНТЕРАКТИВНЫЙ ПИН (С СЕНСОРОМ) ---
+        function changePinColor(e) {
+            e.stopPropagation(); // ФИКС ТАСКАНИЯ: Блокируем клик, чтобы записка не пыталась перетаскиваться!
+            if (e && e.type.includes('touch')) e.preventDefault();
+            let idx = parseInt(note.dataset.pinIdx);
+            idx = (idx + 1) % pinColors.length;
+            note.dataset.pinIdx = idx;
+            pin.style.background = pinColors[idx];
+            saveState(); 
+        }
+        pin.addEventListener('mousedown', e => e.stopPropagation()); // На всякий случай блокируем мышь
+        pin.addEventListener('click', changePinColor);
+        pin.addEventListener('touchstart', changePinColor, { passive: false });
+
+        note.querySelector('.canvas-palette-toggle').addEventListener('click', () => {
+            document.querySelectorAll('.canvas-note').forEach(n => { if (n !== note) n.classList.remove('show-tools'); });
+            note.classList.toggle('show-tools');
+        });
+
+        note.querySelector('.canvas-close').addEventListener('click', () => {
+            note.style.transform = 'scale(0)';
+            setTimeout(() => { note.remove(); saveAllNotesToStorage(); }, 200);
+        });
+
+        // --- ПЕРЕТАСКИВАНИЕ ЗАПИСКИ ---
         const handle = note.querySelector('.canvas-handle');
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         
         function dragStart(e) {
             const evt = e.type.includes('touch') ? e.touches[0] : e;
             if (!e.type.includes('touch')) e.preventDefault();
-            note.style.zIndex = 1600 + noteCount;
-            pos3 = evt.clientX; 
-            pos4 = evt.clientY;
-            
-            document.addEventListener('mouseup', dragEnd);
-            document.addEventListener('mousemove', dragMove);
-            document.addEventListener('touchend', dragEnd);
-            document.addEventListener('touchmove', dragMove, { passive: false });
+            highestZ++; note.style.zIndex = highestZ;
+            pos3 = evt.clientX; pos4 = evt.clientY;
+            document.addEventListener('mouseup', dragEnd); document.addEventListener('mousemove', dragMove);
+            document.addEventListener('touchend', dragEnd); document.addEventListener('touchmove', dragMove, { passive: false });
         }
-        
         function dragMove(e) {
             e.preventDefault();
             const evt = e.type.includes('touch') ? e.touches[0] : e;
-            pos1 = pos3 - evt.clientX; 
-            pos2 = pos4 - evt.clientY;
-            pos3 = evt.clientX; 
-            pos4 = evt.clientY;
-            note.style.top = (note.offsetTop - pos2) + "px";
-            note.style.left = (note.offsetLeft - pos1) + "px";
+            pos1 = pos3 - evt.clientX; pos2 = pos4 - evt.clientY;
+            pos3 = evt.clientX; pos4 = evt.clientY;
+            note.style.top = (note.offsetTop - pos2) + "px"; note.style.left = (note.offsetLeft - pos1) + "px";
         }
-
         function dragEnd() {
-            document.removeEventListener('mouseup', dragEnd);
-            document.removeEventListener('mousemove', dragMove);
-            document.removeEventListener('touchend', dragEnd);
-            document.removeEventListener('touchmove', dragMove);
+            document.removeEventListener('mouseup', dragEnd); document.removeEventListener('mousemove', dragMove);
+            document.removeEventListener('touchend', dragEnd); document.removeEventListener('touchmove', dragMove);
+            saveAllNotesToStorage(); 
+        }
+        handle.addEventListener('mousedown', dragStart); handle.addEventListener('touchstart', dragStart, { passive: false });
+
+        // --- УМНАЯ ПОДВЕСКА ДЛЯ ТЕКСТА/ЧЕКБОКСОВ ---
+        function makeInnerDraggable(el) {
+            let p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+            let isDragged = false;
+            function innerDragStart(e) {
+                if (e.target.tagName === 'INPUT') return; 
+                e.stopPropagation(); 
+                const evt = e.type.includes('touch') ? e.touches[0] : e;
+                if (!e.type.includes('touch')) e.preventDefault();
+                p3 = evt.clientX; p4 = evt.clientY;
+                isDragged = false;
+                document.addEventListener('mouseup', innerDragEnd); document.addEventListener('mousemove', innerDragMove);
+                document.addEventListener('touchend', innerDragEnd); document.addEventListener('touchmove', innerDragMove, { passive: false });
+            }
+            function innerDragMove(e) {
+                e.preventDefault();
+                const evt = e.type.includes('touch') ? e.touches[0] : e;
+                p1 = p3 - evt.clientX; p2 = p4 - evt.clientY;
+                p3 = evt.clientX; p4 = evt.clientY;
+                if (Math.abs(p1) > 2 || Math.abs(p2) > 2) isDragged = true; 
+                el.style.top = (el.offsetTop - p2) + "px"; el.style.left = (el.offsetLeft - p1) + "px";
+            }
+            function innerDragEnd() {
+                document.removeEventListener('mouseup', innerDragEnd); document.removeEventListener('mousemove', innerDragMove);
+                document.removeEventListener('touchend', innerDragEnd); document.removeEventListener('touchmove', innerDragMove);
+                if (isDragged) saveState(); 
+            }
+            el.addEventListener('mousedown', innerDragStart); el.addEventListener('touchstart', innerDragStart, { passive: false });
         }
 
-        handle.addEventListener('mousedown', dragStart);
-        handle.addEventListener('touchstart', dragStart, { passive: false });
+        // --- СОЗДАНИЕ ТЕКСТА И ЗАДАЧ ---
+        function createCheckboxOverlay(x, y, text, isChecked, isRestoring = false) {
+            const cbWrap = document.createElement('div'); 
+            cbWrap.className = 'note-checkbox-wrapper';
+            cbWrap.style.left = x + 'px'; cbWrap.style.top = y + 'px';
+            cbWrap.innerHTML = `<input type="checkbox" ${isChecked ? 'checked' : ''}> <span>${text}</span>`;
+            
+            const inputBox = cbWrap.querySelector('input');
+            inputBox.addEventListener('change', () => { saveState(); }); 
+            inputBox.addEventListener('mousedown', e => e.stopPropagation()); 
+            inputBox.addEventListener('touchstart', e => e.stopPropagation());
+            
+            cbWrap.addEventListener('dblclick', () => { cbWrap.remove(); saveState(); }); 
+            
+            overlayContainer.appendChild(cbWrap);
+            makeInnerDraggable(cbWrap); 
+            
+            if (!isRestoring) saveState();
+        }
 
-        // --- МЕХАНИКА РИСОВАНИЯ И ИСТОРИИ (UNDO) ---
-        const canvas = note.querySelector('.canvas-board');
-        const ctx = canvas.getContext('2d');
+        function createTextOverlay(x, y, text, color, sizeStr, isRestoring = false) {
+            const txtWrap = document.createElement('div');
+            txtWrap.className = 'note-text-wrapper';
+            txtWrap.style.left = x + 'px'; txtWrap.style.top = y + 'px';
+            txtWrap.style.color = color;
+            txtWrap.style.fontSize = sizeStr;
+            txtWrap.innerText = text;
+            
+            txtWrap.addEventListener('dblclick', () => { txtWrap.remove(); saveState(); }); 
+            
+            overlayContainer.appendChild(txtWrap);
+            makeInnerDraggable(txtWrap); 
+            
+            if (!isRestoring) saveState();
+        }
+
+        // ВОССТАНОВЛЕНИЕ ПРИ ЗАГРУЗКЕ САЙТА
+        if (data && data.image) {
+            let img = new Image(); img.src = data.image;
+            img.onload = () => { 
+                ctx.drawImage(img, 0, 0); 
+                if (data.overlays) {
+                    data.overlays.forEach(ov => {
+                        if (ov.type === 'checkbox') createCheckboxOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.checked, true);
+                        else if (ov.type === 'text') createTextOverlay(parseFloat(ov.x), parseFloat(ov.y), ov.text, ov.color, ov.fontSize, true);
+                    });
+                }
+                saveState(); 
+            };
+        } else { 
+            saveState(); 
+        }
+
+        // --- МЕХАНИКА CANVAS ---
         let isDrawing = false;
-        
-        // Массив для хранения "фотографий" холста
-        let restoreArray = [];
-        let index = -1;
+        let currentColor = '#3b301a';
+        let currentSize = 2.5;
+        let currentTool = 'draw'; 
 
-        // Сохраняем чистый белый (прозрачный) лист при создании
-        saveState();
+        const toolBtns = note.querySelectorAll('.canvas-tool-btn:not(.canvas-undo):not(.canvas-redo)');
+        function setActiveTool(toolName, btnElement) {
+            currentTool = toolName;
+            toolBtns.forEach(b => b.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
 
-        ctx.strokeStyle = '#3b301a';
-        ctx.lineWidth = 2.5;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+            if (toolName === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+            }
+        }
+
+        function updateBrushSize() {
+            ctx.lineWidth = currentSize;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        }
+        updateBrushSize();
+
+        const colors = note.querySelectorAll('.canvas-color');
+        colors.forEach(col => {
+            col.addEventListener('click', () => {
+                colors.forEach(c => c.classList.remove('active'));
+                col.classList.add('active');
+                currentColor = col.dataset.color;
+                setActiveTool('draw', null); 
+                updateBrushSize();
+            });
+        });
+
+        note.querySelector('.canvas-size').addEventListener('input', (e) => {
+            currentSize = e.target.value; updateBrushSize();
+        });
+
+        note.querySelector('.canvas-text-btn').addEventListener('click', function() { setActiveTool('text', this); });
+        note.querySelector('.canvas-check-btn').addEventListener('click', function() { setActiveTool('checkbox', this); });
+        note.querySelector('.canvas-eraser').addEventListener('click', function() { setActiveTool('eraser', this); });
+
+        note.querySelector('.canvas-clear').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            overlayContainer.innerHTML = ''; 
+            saveState(); 
+        });
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
@@ -562,67 +820,51 @@ function initCanvasNotes() {
             return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
         }
 
-        // Функция сохранения кадра
-        function saveState() {
-            // Если мы отменили пару шагов и начали рисовать заново - затираем будущее
-            if (index < restoreArray.length - 1) {
-                restoreArray.length = index + 1; 
-            }
-            restoreArray.push(canvas.toDataURL());
-            index++;
-        }
-
-        // Логика кнопки "Отмена"
-        note.querySelector('.canvas-undo').addEventListener('click', () => {
-            if (index > 0) {
-                index--; // Откатываем индекс
-                let canvasPic = new Image();
-                canvasPic.src = restoreArray[index];
-                canvasPic.onload = () => {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height); // Чистим
-                    ctx.drawImage(canvasPic, 0, 0, canvas.width, canvas.height); // Вставляем прошлый кадр
-                }
-            } else if (index === 0) {
-                // Если дошли до нуля - просто чистим весь холст
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        });
-
         function startDraw(e) {
             if (e.type.includes('touch')) e.preventDefault(); 
-            isDrawing = true;
             const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
+
+            if (currentTool === 'text') {
+                const text = prompt("Введите текст:");
+                if (text) {
+                    const fontSize = (currentSize * 3) + 12 + 'px'; 
+                    createTextOverlay(pos.x, pos.y, text, currentColor, fontSize);
+                }
+                return;
+            }
+
+            if (currentTool === 'checkbox') {
+                const text = prompt("Текст задачи:");
+                if (text) createCheckboxOverlay(pos.x, pos.y, text, false);
+                return;
+            }
+
+            isDrawing = true;
+            ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
         }
 
         function draw(e) {
             if (!isDrawing) return;
             if (e.type.includes('touch')) e.preventDefault(); 
             const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
+            ctx.lineTo(pos.x, pos.y); ctx.stroke();
         }
 
         function stopDraw() { 
             if (isDrawing) {
                 isDrawing = false; 
-                saveState(); // Как только оторвали маркер - сохраняем кадр в историю!
+                saveState(); 
             }
         }
 
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDraw);
-        canvas.addEventListener('mouseleave', stopDraw);
-        
-        canvas.addEventListener('touchstart', startDraw, { passive: false });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', stopDraw);
-        canvas.addEventListener('touchcancel', stopDraw);
-    });
+        canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw); canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDraw); canvas.addEventListener('touchcancel', stopDraw);
+    }
+
+    spawnBtn.addEventListener('click', () => { createNote(); saveAllNotesToStorage(); });
+    loadNotes();
 }
 
 // === ЗАПУСК ВСЕХ ДВИЖКОВ ПРИ СТАРТЕ ===
