@@ -457,7 +457,8 @@ function initLoFiCursor() {
 // === МЕХАНИКА СКЕТЧ-ЗАПИСОК (АБСОЛЮТНЫЙ ИНСТРУМЕНТАРИЙ V3.1 - ФИКС БАГОВ) ===
 function initCanvasNotes() {
     const btnGroup = document.createElement('div');
-    btnGroup.style.cssText = "position: fixed; bottom: 20px; left: 20px; z-index: 2000; display: flex; gap: 10px;";
+    // Убрали длинный style.cssText и дали нормальный ID
+    btnGroup.id = 'canvas-btn-group'; 
     
     const spawnBtn = document.createElement('button');
     spawnBtn.innerHTML = '🎨 Новый скетч';
