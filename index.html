@@ -3,14 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Бруник | Data Hub</title>
+    <title>Бруник | Lo-Fi & Mods</title>
     <link rel="icon" type="image/png" href="img/ui/favicon.png">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <aside class="side-widget widget-left">
+        <div class="pomodoro-widget">
+            <div class="pomo-title">🍅 Фокус-таймер</div>
+            <div class="pomo-time" id="pomo-display">25:00</div>
+            <div class="pomo-controls">
+                <button id="pomo-start">▶ Старт</button>
+                <button id="pomo-reset">↻ Сброс</button>
+            </div>
+            <div class="pomo-desc">Не отвлекайся.</div>
+        </div>
+    </aside>
+
+    <aside class="side-widget widget-right">
+        <div class="sticky-note">
+            <div class="sticky-pin"></div>
+            <div class="sticky-title">План Бруника:</div>
+            <ul class="sticky-list">
+                <li><input type="checkbox"> <span>Покормить Асю</span></li>
+                <li><input type="checkbox"> <span>Выпить энергетик</span></li>
+                <li><input type="checkbox"> <span>Понюхать озон</span></li>
+                <li><input type="checkbox"> <span>PROXY ERROR 429</span></li>
+                <li><input type="checkbox"> <span>Случайно сломать расширение</span></li>
+            </ul>
+        </div>
+    </aside>
     <header>
-        <h1>[BruniikBron // Data Hub]</h1>
-        <p>Fan-Site • Extensions • Characters • Art</p>
+        <h1>BruniikBron: Lo-Fi & Mods 🌙</h1>
+        <p>Твоя зона отдыха. Слушай музычку, лови светлячков и устанавливай расширения для SillyTavern.</p>
     </header>
 
     <main>
@@ -23,37 +48,55 @@
             </a>
         </section>
 
-        <section id="radio-section" style="margin-bottom: 40px;">
-            <div class="l-podcast-body">
-                <div class="l-top-section">
-                    <div class="l-avatar">
-                        <div class="l-avatar-image"></div>
-                    </div>
-                    <div class="l-speech-bubble">
-                        Йоу! Добро пожаловать в Data Hub. Врубай музло на фоне, чекай расширения и арты внизу! 🔥
-                    </div>
+<section id="radio-section" style="margin-bottom: 40px;">
+    <div class="l-podcast-body">
+        <div class="l-top-section">
+            <div class="l-avatar">
+                <div class="l-avatar-image"></div>
+            </div>
+            <div class="l-speech-bubble">
+                Тихо-тихо... Включай Lo-Fi, бери горячий чай и устраивайся поудобнее... Мои расширения лежат чуть ниже ☕🌿
+            </div>
+        </div>
+
+        <div class="l-player">
+            <div class="l-track-info">
+                <div class="l-now-playing-row">
+                    <span class="l-now-playing" id="lofi-status">LIVE BROADCAST</span>
+                    <span class="l-freq" id="lofi-freq">FM 104.5 // STEREO</span>
                 </div>
-                <div class="l-player">
-                    <div class="l-track-info">
-                        <div class="l-now-playing-row">
-                            <span class="l-now-playing">LIVE BROADCAST</span>
-                            <span class="l-freq">FM 104.5 // STEREO</span>
-                        </div>
-                        <div class="l-marquee">
-                            <span>♪ 104.5 LYCORIS FM • 24/7 PARADISE MIX ♪ 104.5 LYCORIS FM • 24/7 PARADISE MIX ♪</span>
-                        </div>
-                        <div class="l-audio-container">
-                            <audio class="l-audio-player" controls preload="none" src="https://stream.radioparadise.com/aac-128"></audio>
-                        </div>
-                    </div>
-                    <div class="l-eq-box">
-                        <div class="l-eq">
-                            <span></span><span></span><span></span><span></span><span></span>
+
+                <div class="l-marquee">
+                    <span id="lofi-marquee">♪ 104.5 LYCORIS FM • 24/7 LO-FI ♪ 104.5 LYCORIS FM • 24/7 LO-FI ♪</span>
+                </div>
+
+                <div class="l-audio-container">
+                    <audio id="lofi-audio" preload="none"></audio>
+
+                    <div class="custom-lofi-player">
+                        <button id="lofi-prev-btn" class="c-play-btn c-radio-btn" type="button">⏮</button>
+                        <button id="lofi-play-btn" class="c-play-btn c-icon-btn" type="button" aria-label="Play / Pause">
+                            <span class="play-icon">▶</span>
+                            <span class="pause-icon">⏸</span>
+                        </button>    
+                        <button id="lofi-next-btn" class="c-play-btn c-radio-btn" type="button">⏭</button>
+
+                        <div class="c-vol-wrap">
+                            <span class="c-vol-label">VOL</span>
+                            <input type="range" id="lofi-vol" class="c-vol-slider" min="0" max="1" step="0.01" value="0.4">
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+
+            <div class="l-eq-box">
+                <div class="l-eq">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
         
         <section id="extensions-section">
             <h2>> Расширения</h2>
