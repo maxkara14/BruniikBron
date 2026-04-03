@@ -363,6 +363,61 @@ section h2:hover::before {
     z-index: 5; /* Чтобы активная картинка была поверх остальных */
 }
 
+.kitten-hotspot {
+    position: absolute;
+    left: 26%;
+    top: 80%;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(220, 185, 122, 0.65), rgba(220, 185, 122, 0));
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    z-index: 15;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.kitten-hotspot::before {
+    content: '🐾';
+    font-size: 18px;
+    line-height: 1;
+}
+
+.kitten-hotspot:hover {
+    transform: translate(-50%, -50%) scale(1.08);
+    filter: drop-shadow(0 0 8px rgba(220, 185, 122, 0.7));
+}
+
+.kitten-hotspot.fed::before {
+    content: '😺';
+}
+
+.kitten-status {
+    position: absolute;
+    left: 32%;
+    top: 72%;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 4px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 12, 10, 0.75);
+    border: 1px solid rgba(220, 185, 122, 0.6);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 16;
+    pointer-events: none;
+}
+
+.kitten-status.show {
+    opacity: 1;
+    transform: scale(1);
+}
+
 /* === МОДАЛЬНОЕ ОКНО ГАЛЕРЕИ === */
 .modal {
     display: none;

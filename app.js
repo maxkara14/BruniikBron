@@ -76,6 +76,47 @@ function renderGallery() {
             <img src="${img.src}" alt="${img.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMzZjJjMmMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iI2Q0YWYzNyIgZm9udC1zaXplPSIxOHB4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+QXJ0IEhlcmU8L3RleHQ+PC9zdmc+'" loading="lazy">
         `;
 
+        if (img.title.trim().toLowerCase() === 'рен') {
+            const kittenHotspot = document.createElement('button');
+            kittenHotspot.type = 'button';
+            kittenHotspot.className = 'kitten-hotspot';
+            kittenHotspot.setAttribute('aria-label', 'Покормить котёнка');
+            kittenHotspot.title = 'Кажется, котёнок голодный...';
+
+            const kittenStatus = document.createElement('div');
+            kittenStatus.className = 'kitten-status';
+
+            let stage = 0;
+            kittenHotspot.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                if (stage === 0) {
+                    stage = 1;
+                    kittenStatus.textContent = '🐟';
+                    kittenStatus.classList.add('show');
+                    showLoFiToast('🐟 Котёнок смотрит на рыбку...');
+                    return;
+                }
+
+                if (stage === 1) {
+                    stage = 2;
+                    kittenStatus.textContent = '💖';
+                    kittenHotspot.classList.add('fed');
+
+                    const catQuestCb = document.getElementById('quest-cb-cat');
+                    if (catQuestCb && !catQuestCb.checked) {
+                        catQuestCb.checked = true;
+                        catQuestCb.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+
+                    showLoFiToast('😺 Котёнок накормлен. Ася довольна!', '#ef4444');
+                }
+            });
+
+            item.appendChild(kittenHotspot);
+            item.appendChild(kittenStatus);
+        }
+
         item.addEventListener('click', () => {
             openGalleryModal(img.src, img.title);
         });
@@ -339,7 +380,7 @@ function initAsyaCat() {
     const listItems = document.querySelectorAll('.sticky-list li');
     let catCheckbox = null;
     listItems.forEach(li => {
-        if (li.innerText.includes('Покормить кошку') || li.innerText.includes('Покормить Асю')) {
+        if (li.innerText.includes('Покормить Асю')) {
             catCheckbox = li.querySelector('input[type="checkbox"]');
         }
     });
@@ -1480,6 +1521,15 @@ function initQuestCheckboxes() {
         breakCb.onclick = (e) => {
             e.preventDefault();
             showLoFiToast("🔒 Ломать не строить.", "#dcb97a");
+            return false;
+        };
+    }
+
+    const catCb = document.getElementById('quest-cb-cat');
+    if (catCb) {
+        catCb.onclick = (e) => {
+            e.preventDefault();
+            showLoFiToast('🔒 Здесь есть ещё одна кошка...');
             return false;
         };
     }
