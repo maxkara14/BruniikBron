@@ -1,3 +1,4 @@
+
 // Отрисовка расширений
 function renderExtensions() {
     const container = document.getElementById('extensions-container');
@@ -44,6 +45,16 @@ function renderBots() {
                 <a href="${item.botFile}" download class="btn download-btn">💾 Скачать персонажа</a>
             </div>
         `;
+
+        // Секретный триггер игры
+        const penTrigger = card.querySelector('.post-author');
+        if (penTrigger && item.title.includes('🖊️')) {
+            penTrigger.style.cursor = 'help';
+            penTrigger.onclick = () => {
+                if (window.openBalanceGame) window.openBalanceGame();
+            };
+        }
+
         container.appendChild(card);
     });
 }
@@ -164,6 +175,15 @@ function initCustomPlayer() {
     const marqueeEl = document.getElementById('lofi-marquee');
 
     if (!audio || !playBtn || !prevBtn || !nextBtn || !volSlider || !statusEl || !freqEl || !marqueeEl) return;
+
+    const snitchCheckbox = document.getElementById('quest-cb-snitch');
+    if (snitchCheckbox) {
+        snitchCheckbox.onclick = (e) => {
+            e.preventDefault();
+            if (!snitchCheckbox.checked) showLoFiToast("🔒 Снитч где-то рядом... Фокусируйся на таймере.", "#dcb97a");
+            return false;
+        };
+    }
 
     const stations =[
         {
@@ -356,7 +376,11 @@ function initAsyaCat() {
             // Кормим
             isHungry = false;
             bubble.classList.remove('show');
-            if (catCheckbox) catCheckbox.checked = true;
+            if (catCheckbox) {
+                catCheckbox.checked = true;
+                unlockFragment(1); // Разблокируем "с"
+                checkAllTasksDone();
+            }
             showLoFiToast('🐈 Ням-ням! Ася сыта и ложится спать.', '#ef4444');
             
             // Засыпает обратно через 2 секунды
@@ -415,6 +439,8 @@ function initPomodoro() {
     let isRunning = false;
     let completedCycles = 0; 
     
+    let snitchTriggerTime = -1; // Время для спавна снитча
+    
     const display = document.getElementById('pomo-display');
     const startBtn = document.getElementById('pomo-start');
     const resetBtn = document.getElementById('pomo-reset');
@@ -450,10 +476,21 @@ function initPomodoro() {
             clearInterval(timerId);
             startBtn.innerText = '▶ Старт';
         } else {
+            // Если стартуем ровно с 25:00, заводим таймер для снитча
+            if (timeLeft === 25 * 60) {
+                snitchTriggerTime = Math.floor(Math.random() * (24 * 60 + 59)) + 1;
+            }
+
             timerId = setInterval(() => {
                 if (timeLeft > 0) { 
                     timeLeft--; 
                     updateDisplay(); 
+                    
+                    // Время пришло? Спавним!
+                    if (snitchTriggerTime !== -1 && timeLeft === snitchTriggerTime) {
+                        spawnSnitch();
+                        snitchTriggerTime = -1;
+                    }
                 } else { 
                     clearInterval(timerId); 
                     isRunning = false;
@@ -486,7 +523,82 @@ function initPomodoro() {
         timeLeft = defaultMins * 60; // Сбрасываем к последнему заданному времени
         startBtn.innerText = '▶ Старт';
         updateDisplay();
+        snitchTriggerTime = -1;
     });
+}
+
+function spawnSnitch() {
+    const snitch = document.createElement('div');
+    snitch.className = 'snitch-container';
+    snitch.innerHTML = `
+        <div class="snitch-wing left"></div>
+        <div class="snitch-body"></div>
+        <div class="snitch-wing right"></div>
+    `;
+    
+    let lastJumpTime = 0;
+
+    function move() {
+        const now = Date.now();
+        if (now - lastJumpTime < 500) return;
+
+        const rect = snitch.getBoundingClientRect();
+        const curX = rect.left;
+        const curY = rect.top;
+
+        let nX, nY, d;
+        let attempts = 0;
+        do {
+            nX = Math.random() * (window.innerWidth - 100) + 50;
+            nY = Math.random() * (window.innerHeight - 100) + 50;
+            d = Math.hypot(nX - curX, nY - curY);
+            attempts++;
+        } while (d < 200 && attempts < 50);
+
+        snitch.style.left = nX + 'px';
+        snitch.style.top = nY + 'px';
+        lastJumpTime = now;
+
+        // Визуальный эффект следа (используем существующие частицы)
+        if (typeof createFireflyExplosion === 'function') {
+            createFireflyExplosion(curX + 20, curY + 20);
+        }
+    }
+    
+    // Начальная позиция
+    snitch.style.left = Math.random() * (window.innerWidth - 100) + 50 + 'px';
+    snitch.style.top = Math.random() * (window.innerHeight - 100) + 50 + 'px';
+    
+    document.body.appendChild(snitch);
+    showLoFiToast("⭐ Что-то золотое промелькнуло на экране...", "var(--accent-gold)");
+
+    const escapeLogic = (e) => {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const rect = snitch.getBoundingClientRect();
+        const sX = rect.left + rect.width / 2;
+        const sY = rect.top + rect.height / 2;
+        const dist = Math.hypot(clientX - sX, clientY - sY);
+        
+        if (dist < 80) move();
+    };
+
+    window.addEventListener('mousemove', escapeLogic);
+    window.addEventListener('touchstart', escapeLogic, { passive: true });
+
+    snitch.onclick = () => {
+        const cb = document.getElementById('quest-cb-snitch');
+        if (cb) {
+            cb.checked = true;
+            cb.dispatchEvent(new Event('change'));
+        }
+        unlockFragment(2);
+        showLoFiToast("🏆 СНИТЧ ПОЙМАН!", "#d4af37");
+        window.removeEventListener('mousemove', escapeLogic);
+        window.removeEventListener('touchstart', escapeLogic);
+        snitch.remove();
+    };
 }
 // === ДВИЖОК DRAG & DROP (С СЕНСОРНЫМ ПРИВОДОМ) ===
 function initDraggableWidgets() {
@@ -794,6 +906,7 @@ function initCanvasNotes() {
         note.innerHTML = `
             <div class="canvas-handle" title="Потяни меня"></div>
             <div class="canvas-pin" title="Кликни, чтобы сменить цвет"></div>
+            <div class="canvas-ai-btn" title="AI Генерация">🤖</div>
             <div class="canvas-palette-toggle" title="Открыть/Закрыть панель инструментов">🎨</div>
             <div class="canvas-close" title="Выкинуть в мусорку">✖</div>
             
@@ -823,6 +936,7 @@ function initCanvasNotes() {
         const ctx = canvas.getContext('2d');
         const overlayContainer = note.querySelector('.overlay-container');
         const pin = note.querySelector('.canvas-pin');
+        const aiBtn = note.querySelector('.canvas-ai-btn');
         
         let activeOverlay = null;
 
@@ -919,12 +1033,65 @@ function initCanvasNotes() {
         pin.addEventListener('click', changePinColor);
         pin.addEventListener('touchstart', changePinColor, { passive: false });
 
+        aiBtn.addEventListener('click', () => {
+            const promptVal = prompt("Введите запрос для генерации:");
+            if (promptVal) {
+                // Блокируем инструменты
+                note.classList.add('ai-processing');
+                const toolbar = note.querySelector('.canvas-toolbar');
+                if (toolbar) toolbar.style.pointerEvents = 'none';
+                canvas.style.pointerEvents = 'none';
+                
+                let elapsed = 0;
+                const genInterval = setInterval(() => {
+                    elapsed += 100;
+                    if (elapsed >= 15000) {
+                        clearInterval(genInterval);
+                        
+                        // Очистка и ошибка
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        ctx.fillStyle = '#ef4444';
+                        ctx.font = 'bold 12px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('ОШИБКА ГЕНЕРАЦИИ: 429', canvas.width / 2, canvas.height / 2);
+                        
+                        showLoFiToast("⚠️ Proxy Error 429: Too Many Requests", "#ef4444");
+                        
+                        // Квест
+                        const proxyCb = document.getElementById('quest-cb-proxy');
+                        if (proxyCb) {
+                            proxyCb.checked = true;
+                            unlockFragment(3);
+                            checkAllTasksDone();
+                        }
+                        
+                        // Разблокировка
+                        note.classList.remove('ai-processing');
+                        if (toolbar) toolbar.style.pointerEvents = 'auto';
+                        canvas.style.pointerEvents = 'auto';
+                        saveState();
+                    } else {
+                        const char = String.fromCharCode(Math.floor(Math.random() * (126 - 33 + 1)) + 33);
+                        ctx.fillStyle = '#6b8c6c';
+                        ctx.font = '10px monospace';
+                        ctx.fillText(char, Math.random() * canvas.width, Math.random() * canvas.height);
+                    }
+                }, 100);
+
+                note.aiInterval = genInterval;
+            }
+        });
+
         note.querySelector('.canvas-palette-toggle').addEventListener('click', () => {
             document.querySelectorAll('.canvas-note').forEach(n => { if (n !== note) n.classList.remove('show-tools'); });
             note.classList.toggle('show-tools');
         });
 
         note.querySelector('.canvas-close').addEventListener('click', () => {
+            if (note.aiInterval) clearInterval(note.aiInterval);
             note.style.transform = 'scale(0)';
             setTimeout(() => { note.remove(); saveAllNotesToStorage(); }, 200);
         });
@@ -1149,6 +1316,351 @@ function initCanvasNotes() {
     spawnBtn.addEventListener('click', () => { createNote(); saveAllNotesToStorage(); });
     loadNotes();
 }
+// === СИСТЕМА КВЕСТА: ЛОСОСЬ (v1.0) ===
+const QUEST_FRAGMENTS = ['0JvQvg==', '0YE=', '0L4=', '0YE=', '0Yw=']; // Ло, с, о, с, ь
+
+function getQuestProgress() {
+    return JSON.parse(localStorage.getItem('bb_quest_fragments') || '[]');
+}
+
+function unlockFragment(idx) {
+    let progress = getQuestProgress();
+    if (!progress.includes(idx)) {
+        progress.push(idx);
+        localStorage.setItem('bb_quest_fragments', JSON.stringify(progress));
+        const decoded = decodeURIComponent(escape(atob(QUEST_FRAGMENTS[idx])));
+        showLoFiToast(`🧩 ПОЛУЧЕН ФРАГМЕНТ КОДА: [ ${decoded} ]`, "var(--accent-gold)");
+    }
+}
+
+function checkAllTasksDone() {
+    const checks = document.querySelectorAll('.sticky-list input[type="checkbox"]');
+    const allDone = Array.from(checks).every(c => c.checked);
+    if (allDone) {
+        setTimeout(openFinalTerminal, 1500);
+    }
+}
+
+function openFinalTerminal() {
+    const overlay = document.getElementById('quest-final-overlay');
+    const slots = document.getElementById('letter-slots');
+    const countEl = document.getElementById('t-fragments-count');
+    if (!overlay || !slots) return;
+
+    const progress = getQuestProgress();
+    slots.innerHTML = '';
+    
+    // Перемешиваем индексы для отображения
+    let displayIndices = [...progress].sort(() => Math.random() - 0.5);
+    
+    displayIndices.forEach(idx => {
+        const block = document.createElement('div');
+        block.className = 'letter-block';
+        block.innerText = decodeURIComponent(escape(atob(QUEST_FRAGMENTS[idx])));
+        slots.appendChild(block);
+    });
+
+    countEl.innerText = `${progress.length}/5`;
+    overlay.style.display = 'flex';
+    overlay.oncontextmenu = (e) => { e.preventDefault(); return false; };
+}
+
+function initTerminalLogic() {
+    const input = document.getElementById('final-word-input');
+    const btn = document.getElementById('final-check-btn');
+    const err = document.getElementById('terminal-error');
+    const closeBtn = document.getElementById('terminal-close');
+    const overlay = document.getElementById('quest-final-overlay');
+
+    // UI элементы для состояния успеха
+    const inputWrap = document.getElementById('terminal-input-wrap');
+    const successUi = document.getElementById('terminal-success-ui');
+    const codeDisplay = document.getElementById('final-code-display');
+    const copyTgBtn = document.getElementById('copy-tg-btn');
+    const container = document.querySelector('.terminal-container');
+
+    if (closeBtn) closeBtn.onclick = () => { overlay.style.display = 'none'; };
+
+    if (!btn || !input) return;
+
+    btn.onclick = () => {
+        const val = input.value.trim().toLowerCase();
+        
+        // 1. Fix 'лосось' check: Use 'val.split("").reverse().join("") === "ьсосол"'
+        if (val.split("").reverse().join("") === "ьсосол") {
+            // 2. Когда верно:
+            // - Скрываем 'terminal-input-wrap'
+            // - Показываем 'terminal-success-ui'
+            // - Добавляем класс 'terminal-success' контейнеру
+            if (inputWrap) inputWrap.style.display = 'none';
+            if (successUi) successUi.style.display = 'block';
+            if (container) container.classList.add('terminal-success');
+
+            showLoFiToast("🎉 СУПЕР! СИСТЕМА ВЗЛОМАНА!", "#6b8c6c");
+        } else {
+            err.style.display = 'block';
+            setTimeout(() => { err.style.display = 'none'; }, 2000);
+        }
+    };
+
+    // 3. Реализация click-to-copy для 'final-code-display'
+    if (codeDisplay) {
+        codeDisplay.onclick = () => {
+            const text = codeDisplay.innerText.trim();
+            navigator.clipboard.writeText(text).then(() => {
+                showLoFiToast("📋 Код скопирован в буфер!", "var(--accent-gold)");
+            }).catch(() => {
+                // Fallback если clipboard API не доступен
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showLoFiToast("📋 Код скопирован!", "var(--accent-gold)");
+                } catch (err) {
+                    console.error('Ошибка копирования:', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        };
+    }
+
+    // 4. Логика для кнопки копирования ТГ
+    if (copyTgBtn) {
+        copyTgBtn.onclick = () => {
+            const tgNick = "@brun11kbron";
+            navigator.clipboard.writeText(tgNick).then(() => {
+                showLoFiToast("📋 Никнейм скопирован!", "var(--accent-gold)");
+            }).catch(() => {
+                const textArea = document.createElement("textarea");
+                textArea.value = tgNick;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showLoFiToast("📋 Никнейм скопирован!", "var(--accent-gold)");
+                } catch (err) {
+                    console.error('Ошибка копирования ТГ:', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        };
+    }
+}
+
+function initQuestCheckboxes() {
+    const checkboxes = document.querySelectorAll('.sticky-list input[type="checkbox"]');
+    const mapping = [1, 0, 2, 3, 4]; // Порядок: Ася(с), Баланс(Ло), Снитч(о), Прокси(с), Сломать(ь)
+    
+    // Защита Proxy (v2.0)
+    const proxyCb = document.getElementById('quest-cb-proxy');
+    if (proxyCb) {
+        proxyCb.onclick = (e) => {
+            e.preventDefault();
+            showLoFiToast("🔒 Мощности прокси перегружены...", "#dcb97a");
+            return false;
+        };
+    }
+
+    checkboxes.forEach((cb, idx) => {
+        cb.addEventListener('change', () => {
+            if (cb.checked) {
+                unlockFragment(mapping[idx]);
+                checkAllTasksDone();
+            }
+        });
+    });
+}
+
+// === МИНИ-ИГРА: УДЕРЖАТЬ БАЛАНС (v5.6 - QUEST READY) ===
+function initBalanceMinigame() {
+    const checkbox = document.getElementById('balance-checkbox');
+    const overlay = document.getElementById('balance-game-overlay');
+    const area = document.getElementById('balance-area');
+    const pen = document.getElementById('balance-pen');
+    const zone = document.getElementById('balance-zone');
+    const restartBtn = document.getElementById('balance-restart-btn');
+    const timerEl = document.getElementById('balance-timer');
+    const failDisplay = document.getElementById('balance-fail-display');
+    const failTimerSpan = failDisplay ? failDisplay.querySelector('span') : null;
+    const speech = document.getElementById('balance-speech');
+    const lonaImg = document.getElementById('balance-lona-img');
+    const instr = document.getElementById('balance-instr');
+    const closeBtn = document.getElementById('balance-close');
+    const attemptsEl = document.getElementById('balance-attempts-count');
+
+    if (!checkbox || !overlay || !area || !pen || !zone) return;
+
+    const startQuotes = [
+        "Попробуй удержать ручку в зоне...",
+        "Смотри не урони, криворучка.",
+        "Это же так просто, справишься?",
+        "Ну давай, покажи мастер-класс по балансировке.",
+        "Ой, а что это у нас тут? Ручки из... того самого места?"
+    ];
+    const failQuotes = [
+        "Ручка упала... Попробуешь ещё?",
+        "Мда, гравитация победила. Снова.",
+        "Ты даже это не можешь? Серьёзно?",
+        "Ха-ха! Опять мимо. Может, бросишь это дело?",
+        "Твоё терпение кончится раньше, чем ты победишь.",
+        "Лона разочарована. Очень сильно.",
+        "Ой-ой, кажется, кто-то переоценил свои силы."
+    ];
+    const failToasts = [
+        "💥 ПРОИГРЫШ!", "💥 ПОЗОР!", "💥 КРИВЫЕ РУКИ!", 
+        "💥 ПОПРОБУЙ СНОВА, СЛАБАК!", "💥 ГРАВИТАЦИЯ > ТЫ", 
+        "💥 ОЙ, ВСЁ!", "💥 НЕУДАЧНИК!"
+    ];
+
+    // Счётчик попыток из кэша
+    let attempts = parseInt(localStorage.getItem('bb_balance_attempts')) || 0;
+    if (attemptsEl) attemptsEl.innerText = attempts;
+
+    // Защита чекбокса (v2.1 - ручное нажатие запрещено)
+    checkbox.onclick = (e) => {
+        e.preventDefault();
+        showLoFiToast("🔒 Секрет Лоны скрыт в Персонажах...", "#dcb97a");
+    };
+
+    let active = false;
+    let over = false;
+    let time = 30;
+    let fTime = 0.6;
+    let loop = null;
+
+    let mX = 50; // Мышь в %
+    
+    let zPos = 40; // Позиция зоны в %
+    let zDir = 1;
+    let zSpd = 0.8;
+    let zW = 20;
+
+    const pics = {
+        n: 'img/gallery/Лона.png',
+        f: 'img/gallery/Лона (2).png',
+        w: 'img/gallery/Лона (3).png'
+    };
+
+    window.openBalanceGame = () => {
+        overlay.style.display = 'flex';
+        reset();
+    };
+
+    function reset() {
+        active = false; over = false; time = 30; fTime = 0.6;
+        zPos = 40; zW = 20;
+        
+        // Увеличиваем счётчик при каждом перезапуске
+        attempts++;
+        localStorage.setItem('bb_balance_attempts', attempts);
+        if (attemptsEl) attemptsEl.innerText = attempts;
+
+        timerEl.innerText = '30.0s';
+        if (failDisplay) failDisplay.style.display = 'none';
+        if (restartBtn) restartBtn.style.display = 'none';
+        if (instr) instr.style.display = 'block';
+        pen.classList.remove('fail');
+        if (lonaImg) lonaImg.src = pics.n;
+        if (speech) speech.innerText = startQuotes[Math.floor(Math.random() * startQuotes.length)];
+        draw();
+    }
+
+    function draw() {
+        zone.style.left = zPos + '%';
+        zone.style.width = zW + '%';
+        
+        let final = Math.max(0, Math.min(100, mX)); // Pen clamping
+        pen.style.left = final + '%';
+        pen.style.transform = `translate(-50%, -50%) rotate(0deg)`;
+
+        if (!active && !over && overlay.style.display === 'flex') {
+            if (final >= zPos && final <= zPos + zW) start();
+        }
+    }
+
+    function start() {
+        if (active) return;
+        active = true;
+        if (instr) instr.style.display = 'none';
+        last = performance.now();
+        loop = requestAnimationFrame(tick);
+    }
+
+    let last = 0;
+    function tick(now) {
+        if (!active || over) return;
+        const dt = (now - last) / 1000;
+        last = now;
+
+        // 1. БЕЗУМНОЕ ДВИЖЕНИЕ ЗОНЫ
+        if (Math.random() < 0.05) zDir *= -1;
+        zSpd = 1.5 + Math.sin(now / 300) * 2.5 + ((30 - time) * 0.15);
+        zPos += zDir * zSpd * (dt * 60);
+        zW = 20 - ((30 - time) / 30) * 14;
+
+        if (zPos <= 0) { zPos = 0; zDir = 1; }
+        if (zPos >= 100 - zW) { zPos = 100 - zW; zDir = -1; }
+
+        // 2. ТАЙМЕРЫ
+        time -= dt;
+        timerEl.innerText = Math.max(0, time).toFixed(1) + 's';
+
+        // 3. ПРОВЕРКА ЗОНЫ
+        let p = Math.max(0, Math.min(100, mX));
+        if (p < zPos || p > zPos + zW) {
+            fTime -= dt;
+            if (failDisplay) {
+                failDisplay.style.display = 'block';
+                if (failTimerSpan) failTimerSpan.innerText = Math.max(0, fTime).toFixed(1);
+            }
+            if (fTime <= 0) { end(false); return; }
+        } else {
+            fTime = 0.6;
+            if (failDisplay) failDisplay.style.display = 'none';
+        }
+
+        if (time <= 0) { end(true); return; }
+
+        draw();
+        loop = requestAnimationFrame(tick);
+    }
+
+    function end(win) {
+        active = false; over = true;
+        cancelAnimationFrame(loop);
+        if (win) {
+            checkbox.checked = true;
+            unlockFragment(0); // Разблокируем "Ло"
+            checkAllTasksDone();
+            
+            if (lonaImg) lonaImg.src = pics.w;
+            if (speech) speech.innerText = "Невероятно! Ты справился.";
+            showLoFiToast("🖊️ ПОБЕДА!", "#6b8c6c");
+            setTimeout(() => overlay.style.display = 'none', 2500);
+        } else {
+            pen.classList.add('fail');
+            if (lonaImg) lonaImg.src = pics.f;
+            if (speech) speech.innerText = failQuotes[Math.floor(Math.random() * failQuotes.length)];
+            if (restartBtn) restartBtn.style.display = 'block';
+            document.body.classList.add('loud-bang');
+            setTimeout(() => document.body.classList.remove('loud-bang'), 600);
+            showLoFiToast(failToasts[Math.floor(Math.random() * failToasts.length)], "#ef4444");
+        }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        if (overlay.style.display !== 'flex') return;
+        const r = area.getBoundingClientRect();
+        mX = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+        draw();
+    });
+
+    if (restartBtn) restartBtn.onclick = reset;
+    if (closeBtn) closeBtn.onclick = () => { active = false; over = true; overlay.style.display = 'none'; };
+}
+
 // === ЗАПУСК ВСЕХ ДВИЖКОВ ПРИ СТАРТЕ ===
 document.addEventListener('DOMContentLoaded', () => {
     // Восстановленные базовые модули:
@@ -1166,4 +1678,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCanvasNotes(); 
     initAsyaCat();
     initModalEvents();
+    initBalanceMinigame();
+    initTerminalLogic();
+    initQuestCheckboxes();
 });
