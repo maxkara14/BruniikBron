@@ -140,10 +140,14 @@ function setupToggles() {
         if (!header || !content) return;
 
         header.classList.add('toggle-header');
+        header.style.cursor = 'pointer';
+
+        const computedDisplay = window.getComputedStyle(content).display;
+        const expandedDisplay = computedDisplay === 'none' ? 'block' : computedDisplay;
 
         const applyState = (collapsed) => {
             header.classList.toggle('collapsed', collapsed);
-            content.hidden = collapsed;
+            content.style.display = collapsed ? 'none' : expandedDisplay;
             sectionEl.classList.toggle('is-collapsed', collapsed);
         };
 
