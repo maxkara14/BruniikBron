@@ -363,10 +363,8 @@ section h2:hover::before {
     z-index: 5; /* Чтобы активная картинка была поверх остальных */
 }
 
-.kitten-hotspot {
-    position: absolute;
-    left: 26%;
-    top: 80%;
+.modal-kitten-hotspot {
+    position: fixed;
     width: 44px;
     height: 44px;
     border: none;
@@ -374,29 +372,27 @@ section h2:hover::before {
     background: radial-gradient(circle, rgba(220, 185, 122, 0.65), rgba(220, 185, 122, 0));
     cursor: pointer;
     transform: translate(-50%, -50%);
-    z-index: 15;
+    z-index: 11020;
     transition: transform 0.2s ease, filter 0.2s ease;
 }
 
-.kitten-hotspot::before {
+.modal-kitten-hotspot::before {
     content: '🐾';
     font-size: 18px;
     line-height: 1;
 }
 
-.kitten-hotspot:hover {
+.modal-kitten-hotspot:hover {
     transform: translate(-50%, -50%) scale(1.08);
     filter: drop-shadow(0 0 8px rgba(220, 185, 122, 0.7));
 }
 
-.kitten-hotspot.fed::before {
+.modal-kitten-hotspot.fed::before {
     content: '😺';
 }
 
-.kitten-status {
-    position: absolute;
-    left: 32%;
-    top: 72%;
+.modal-kitten-status {
+    position: fixed;
     min-width: 34px;
     min-height: 34px;
     padding: 4px;
@@ -409,11 +405,11 @@ section h2:hover::before {
     opacity: 0;
     transform: scale(0.6);
     transition: opacity 0.2s ease, transform 0.2s ease;
-    z-index: 16;
+    z-index: 11021;
     pointer-events: none;
 }
 
-.kitten-status.show {
+.modal-kitten-status.show {
     opacity: 1;
     transform: scale(1);
 }
