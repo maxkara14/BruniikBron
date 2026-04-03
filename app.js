@@ -85,12 +85,12 @@ function renderGallery() {
 }
 
 let renKittenStage = 0;
+const REN_KITTEN_FEED_X = 0.26; // 0..1 по ширине изображения Рен
+const REN_KITTEN_FEED_Y = 0.80; // 0..1 по высоте изображения Рен
 
 function removeModalKittenQuest() {
     const hotspot = document.getElementById('modal-kitten-hotspot');
-    const status = document.getElementById('modal-kitten-status');
     if (hotspot) hotspot.remove();
-    if (status) status.remove();
 }
 
 function mountModalKittenQuest() {
@@ -105,26 +105,17 @@ function mountModalKittenQuest() {
     hotspot.id = 'modal-kitten-hotspot';
     hotspot.className = 'modal-kitten-hotspot';
     hotspot.setAttribute('aria-label', 'Покормить котёнка');
-
-    const status = document.createElement('div');
-    status.id = 'modal-kitten-status';
-    status.className = 'modal-kitten-status';
+    hotspot.textContent = renKittenStage >= 1 ? '💖' : '🐟';
+    hotspot.title = renKittenStage >= 1 ? 'Котёнок уже накормлен' : 'Покормить котёнка';
 
     if (renKittenStage >= 1) {
-        status.textContent = renKittenStage >= 2 ? '💖' : '🐟';
-        status.classList.add('show');
-    }
-    if (renKittenStage >= 2) {
         hotspot.classList.add('fed');
     }
 
     const positionQuestUi = () => {
         const rect = modalImg.getBoundingClientRect();
-        hotspot.style.left = `${rect.left + rect.width * 0.26}px`;
-        hotspot.style.top = `${rect.top + rect.height * 0.82}px`;
-
-        status.style.left = `${rect.left + rect.width * 0.33}px`;
-        status.style.top = `${rect.top + rect.height * 0.74}px`;
+        hotspot.style.left = `${rect.left + rect.width * REN_KITTEN_FEED_X}px`;
+        hotspot.style.top = `${rect.top + rect.height * REN_KITTEN_FEED_Y}px`;
     };
 
     hotspot.addEventListener('click', (e) => {
@@ -132,15 +123,7 @@ function mountModalKittenQuest() {
 
         if (renKittenStage === 0) {
             renKittenStage = 1;
-            status.textContent = '🐟';
-            status.classList.add('show');
-            showLoFiToast('🐟 Котёнок заметил рыбку...');
-            return;
-        }
-
-        if (renKittenStage === 1) {
-            renKittenStage = 2;
-            status.textContent = '💖';
+            hotspot.textContent = '💖';
             hotspot.classList.add('fed');
 
             const catQuestCb = document.getElementById('quest-cb-cat');
@@ -149,7 +132,7 @@ function mountModalKittenQuest() {
                 catQuestCb.dispatchEvent(new Event('change', { bubbles: true }));
             }
 
-            showLoFiToast('😺 Котёнок накормлен. Задание выполнено!', '#ef4444');
+            showLoFiToast('😺 Вкусняшка доставлена. Задание выполнено!', '#ef4444');
             return;
         }
 
@@ -157,7 +140,6 @@ function mountModalKittenQuest() {
     });
 
     modal.appendChild(hotspot);
-    modal.appendChild(status);
 
     positionQuestUi();
     requestAnimationFrame(positionQuestUi);
