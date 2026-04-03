@@ -4,9 +4,10 @@ function renderExtensions() {
     const container = document.getElementById('extensions-container');
     container.innerHTML = ''; 
     
-    siteData.extensions.forEach((item) => {
+    siteData.extensions.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = 'card';
+        card.dataset.extCardId = String(idx);
         card.innerHTML = `
             <div class="post-header">
                 <div class="avatar utility">E</div>
@@ -1508,6 +1509,15 @@ function initQuestCheckboxes() {
         };
     }
 
+    const breakCb = document.getElementById('quest-cb-break');
+    if (breakCb) {
+        breakCb.onclick = (e) => {
+            e.preventDefault();
+            showLoFiToast("🔒 Сломай панель быстро кликами по расширению.", "#dcb97a");
+            return false;
+        };
+    }
+
     checkboxes.forEach((cb, idx) => {
         cb.addEventListener('change', () => {
             if (cb.checked) {
@@ -1515,6 +1525,100 @@ function initQuestCheckboxes() {
                 checkAllTasksDone();
             }
         });
+    });
+}
+
+function initExtensionBreakQuest() {
+    const container = document.getElementById('extensions-container');
+    const breakCheckbox = document.getElementById('quest-cb-break');
+    if (!container || !breakCheckbox) return;
+
+    const BROKEN_KEY = 'bb_broken_extension_card';
+    const REQUIRED_CLICKS = 8;
+    const CLICK_WINDOW_MS = 900;
+
+    let currentCard = null;
+    let clickStamps = [];
+
+    function clearBrokenState() {
+        localStorage.removeItem(BROKEN_KEY);
+    }
+
+    function saveBrokenState(card) {
+        const cardId = card.dataset.extCardId;
+        if (cardId) localStorage.setItem(BROKEN_KEY, cardId);
+    }
+
+    function repairCard(card) {
+        card.classList.remove('broken-extension');
+        const repairBtn = card.querySelector('.repair-extension-btn');
+        if (repairBtn) repairBtn.remove();
+        clearBrokenState();
+        showLoFiToast('🔧 Расширение починено.', '#6b8c6c');
+    }
+
+    function breakCard(card, { completeQuest = true, silent = false } = {}) {
+        if (card.classList.contains('broken-extension')) return;
+
+        card.classList.add('broken-extension');
+
+        if (!card.querySelector('.repair-extension-btn')) {
+            const repairBtn = document.createElement('button');
+            repairBtn.type = 'button';
+            repairBtn.className = 'btn repair-extension-btn';
+            repairBtn.textContent = '🔧 Починить панель';
+            card.appendChild(repairBtn);
+        }
+
+        saveBrokenState(card);
+
+        if (completeQuest && !breakCheckbox.checked) {
+            breakCheckbox.checked = true;
+            breakCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (!silent) {
+            showLoFiToast('💥 Панель расширения сломана! Она висит на углу...', '#ef4444');
+        }
+    }
+
+    // Восстановление визуального состояния после перезагрузки
+    const savedCardId = localStorage.getItem(BROKEN_KEY);
+    if (savedCardId) {
+        const savedCard = container.querySelector(`.card[data-ext-card-id="${savedCardId}"]`);
+        if (savedCard) {
+            breakCard(savedCard, { completeQuest: false, silent: true });
+        } else {
+            clearBrokenState();
+        }
+    }
+
+    container.addEventListener('click', (e) => {
+        const repairBtn = e.target.closest('.repair-extension-btn');
+        if (repairBtn) {
+            e.preventDefault();
+            const brokenCard = repairBtn.closest('.card');
+            if (brokenCard) repairCard(brokenCard);
+            return;
+        }
+
+        const card = e.target.closest('.card');
+        if (!card || !container.contains(card)) return;
+
+        const now = performance.now();
+
+        if (currentCard !== card) {
+            currentCard = card;
+            clickStamps = [];
+        }
+
+        clickStamps.push(now);
+        clickStamps = clickStamps.filter((ts) => now - ts <= CLICK_WINDOW_MS);
+
+        if (clickStamps.length >= REQUIRED_CLICKS) {
+            breakCard(card);
+            clickStamps = [];
+        }
     });
 }
 
@@ -1726,4 +1830,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initBalanceMinigame();
     initTerminalLogic();
     initQuestCheckboxes();
+    initExtensionBreakQuest();
 });
