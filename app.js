@@ -150,14 +150,52 @@ function setupToggles() {
         wrapper.appendChild(inner);
         inner.appendChild(content);
 
+        const isCollapsedByDefault = Boolean(sec.collapseDefault);
+        if (isCollapsedByDefault) {
+            wrapper.classList.add('collapsed');
+            wrapper.style.height = '0px';
+        } else {
+            wrapper.style.height = 'auto';
+        }
+
         if (sec.collapseDefault) {
             header.classList.add('collapsed');
-            wrapper.classList.add('collapsed');
         }
+
+        const animateToggle = () => {
+            const isCollapsed = wrapper.classList.contains('collapsed');
+
+            if (isCollapsed) {
+                wrapper.classList.remove('collapsed');
+                const targetHeight = inner.scrollHeight;
+                wrapper.style.height = '0px';
+
+                requestAnimationFrame(() => {
+                    wrapper.style.height = `${targetHeight}px`;
+                });
+
+                const onExpandEnd = (event) => {
+                    if (event.propertyName !== 'height') return;
+                    wrapper.style.height = 'auto';
+                    wrapper.removeEventListener('transitionend', onExpandEnd);
+                };
+
+                wrapper.addEventListener('transitionend', onExpandEnd);
+                return;
+            }
+
+            const currentHeight = inner.scrollHeight;
+            wrapper.style.height = `${currentHeight}px`;
+
+            requestAnimationFrame(() => {
+                wrapper.classList.add('collapsed');
+                wrapper.style.height = '0px';
+            });
+        };
 
         header.addEventListener('click', () => {
             header.classList.toggle('collapsed');
-            wrapper.classList.toggle('collapsed');
+            animateToggle();
         });
     });
 }

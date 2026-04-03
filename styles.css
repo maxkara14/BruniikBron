@@ -406,7 +406,7 @@ section h2:hover::before {
   background: linear-gradient(150deg, rgba(31, 35, 31, 0.96), rgba(22, 24, 22, 0.95)); border: 1px solid var(--border-color); border-top: 3px solid var(--accent-green);
   border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px;
   box-shadow: 0 12px 35px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(107, 140, 108, 0.1); position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .l-podcast-body::after {
@@ -784,9 +784,18 @@ section h2:hover::before {
 .toggle-header { cursor: pointer; position: relative; display: inline-block; transition: all 0.2s ease; user-select: none; }
 .toggle-header:hover { color: var(--accent-green); }
 .toggle-header::after { content: ' ▼'; font-size: 14px; display: inline-block; transition: transform 0.3s; color: var(--accent-gold); margin-left: 8px; }
-.toggle-wrapper { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.toggle-wrapper.collapsed { grid-template-rows: 0fr; }
-.toggle-inner { overflow: hidden; transition: opacity 0.3s, transform 0.4s; opacity: 1; transform: translateY(0); }
+.toggle-wrapper {
+    height: auto;
+    overflow: hidden;
+    transition: height 0.36s cubic-bezier(0.25, 0.8, 0.25, 1);
+    will-change: height;
+}
+
+.toggle-wrapper.collapsed {
+    height: 0;
+}
+
+.toggle-inner { overflow: hidden; transition: opacity 0.24s, transform 0.24s; opacity: 1; transform: translateY(0); }
 .toggle-wrapper.collapsed .toggle-inner { opacity: 0; transform: translateY(-10px); }
 
 /* === ЭФФЕКТ ЗА МЫШКОЙ (Ноты и искры) === */
