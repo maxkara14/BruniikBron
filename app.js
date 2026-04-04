@@ -1859,7 +1859,7 @@ function initBalanceMinigame() {
     let active = false;
     let over = false;
     let time = 30;
-    let fTime = 0.38;
+    let fTime = 0.5;
     let loop = null;
 
     let mX = 50; // Мышь в %
@@ -1881,7 +1881,7 @@ function initBalanceMinigame() {
     };
 
     function reset() {
-        active = false; over = false; time = 30; fTime = 0.38;
+        active = false; over = false; time = 30; fTime = 0.5;
         zPos = 40; zW = 20;
         
         // Увеличиваем счётчик при каждом перезапуске
@@ -1927,11 +1927,11 @@ function initBalanceMinigame() {
         last = now;
 
         // 1. ДВИЖЕНИЕ ЗОНЫ (ребаланс: спокойнее, но требовательнее к точности)
-        if (Math.random() < 0.018) zDir *= -1;
-        zSpd = 1.05 + Math.sin(now / 520) * 1.15 + ((30 - time) * 0.07);
-        zSpd = Math.max(0.7, Math.min(2.8, zSpd));
+        if (Math.random() < 0.012) zDir *= -1;
+        zSpd = 0.8 + Math.sin(now / 650) * 0.8 + ((30 - time) * 0.04);
+        zSpd = Math.max(0.55, Math.min(2.1, zSpd));
         zPos += zDir * zSpd * (dt * 60);
-        zW = 22 - ((30 - time) / 30) * 8;
+        zW = 24 - ((30 - time) / 30) * 6;
 
         if (zPos <= 0) { zPos = 0; zDir = 1; }
         if (zPos >= 100 - zW) { zPos = 100 - zW; zDir = -1; }
@@ -1943,15 +1943,15 @@ function initBalanceMinigame() {
         // 3. ПРОВЕРКА ЗОНЫ
         let p = Math.max(0, Math.min(100, mX));
         if (p < zPos || p > zPos + zW) {
-            fTime -= dt * 1.25;
+            fTime -= dt * 1.0;
             if (failDisplay) {
                 failDisplay.style.display = 'block';
                 if (failTimerSpan) failTimerSpan.innerText = Math.max(0, fTime).toFixed(1);
             }
             if (fTime <= 0) { end(false); return; }
         } else {
-            fTime = Math.min(0.38, fTime + dt * 0.75);
-            if (failDisplay && fTime >= 0.34) failDisplay.style.display = 'none';
+            fTime = Math.min(0.5, fTime + dt * 1.2);
+            if (failDisplay && fTime >= 0.45) failDisplay.style.display = 'none';
         }
 
         if (time <= 0) { end(true); return; }
