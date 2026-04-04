@@ -1927,11 +1927,13 @@ function initBalanceMinigame() {
         last = now;
 
         // 1. ДВИЖЕНИЕ ЗОНЫ (ребаланс: спокойнее, но требовательнее к точности)
-        if (Math.random() < 0.012) zDir *= -1;
-        zSpd = 0.8 + Math.sin(now / 650) * 0.8 + ((30 - time) * 0.04);
-        zSpd = Math.max(0.55, Math.min(2.1, zSpd));
+        const progress = Math.min(1, (30 - time) / 30);
+        const flipChance = progress < 0.5 ? 0.010 : 0.003;
+        if (Math.random() < flipChance) zDir *= -1;
+        zSpd = 0.74 + Math.sin(now / 760) * 0.65 + (progress * 0.15);
+        zSpd = Math.max(0.5, Math.min(1.65, zSpd));
         zPos += zDir * zSpd * (dt * 60);
-        zW = 24 - ((30 - time) / 30) * 6;
+        zW = 24 - (progress * 4);
 
         if (zPos <= 0) { zPos = 0; zDir = 1; }
         if (zPos >= 100 - zW) { zPos = 100 - zW; zDir = -1; }
