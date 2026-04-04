@@ -85,8 +85,8 @@ function renderGallery() {
 }
 
 let renKittenStage = 0;
-const REN_KITTEN_FEED_X = 0.22; // 0..1 по ширине изображения Рен
-const REN_KITTEN_FEED_Y = 0.75; // 0..1 по высоте изображения Рен
+const REN_KITTEN_FEED_X = 0.24; // 0..1 по ширине изображения Рен
+const REN_KITTEN_FEED_Y = 0.72; // 0..1 по высоте изображения Рен
 
 function removeModalKittenQuest() {
     const hotspot = document.getElementById('modal-kitten-hotspot');
