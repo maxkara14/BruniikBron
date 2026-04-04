@@ -752,11 +752,11 @@ section h2:hover::before {
     width: 90%; 
     max-width: 320px; 
     margin: 14px auto;
-    z-index: 1500;
+    z-index: 5000;
 }
 
 .sticky-note {
-    z-index: 1500;
+    z-index: 5000;
 }
 
 @keyframes floatWidget {
@@ -931,6 +931,8 @@ section h2:hover::before {
 /* === DRAG & DROP ИНТЕРФЕЙС === */
 .pomo-title, .sticky-title {
     cursor: grab; /* Показываем лапку */
+    touch-action: none;
+    user-select: none;
 }
 .pomo-title:active, .sticky-title:active {
     cursor: grabbing; /* Схватили! */
@@ -938,7 +940,7 @@ section h2:hover::before {
 /* Отключаем плавающую анимацию во время перетаскивания */
 .side-widget.is-dragging {
     animation: none !important;
-    z-index: 1000; /* Выводим на передний план */
+    z-index: 7000; /* Выводим на передний план */
     transform: scale(1.02);
     transition: transform 0.1s;
 }
@@ -1529,6 +1531,11 @@ section h2:hover::before {
     margin-left: 10px;
     text-transform: uppercase;
     letter-spacing: 1px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .terminal-body {
@@ -1536,16 +1543,17 @@ section h2:hover::before {
     color: #6b8c6c;
     max-height: calc(100vh - 140px);
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .t-msg {
     margin-bottom: 10px;
     font-size: 14px;
-    overflow: hidden;
-    white-space: nowrap;
-    border-right: 2px solid #6b8c6c;
-    width: fit-content;
-    animation: typing 2s steps(40, end), blink-caret 0.75s step-end infinite;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    border-right: none;
+    width: 100%;
+    animation: none;
 }
 
 @keyframes typing { from { width: 0 } to { width: 100% } }
@@ -1616,11 +1624,13 @@ section h2:hover::before {
     padding: 20px;
     font-size: 28px;
     font-weight: 900;
-    letter-spacing: 5px;
+    letter-spacing: 3px;
     margin: 20px 0;
     cursor: pointer;
     transition: all 0.3s;
     text-shadow: 0 0 15px rgba(220, 185, 122, 0.5);
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .final-code-box:hover {

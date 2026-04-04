@@ -735,8 +735,6 @@ function spawnSnitch() {
 }
 // === ДВИЖОК DRAG & DROP (С СЕНСОРНЫМ ПРИВОДОМ) ===
 function initDraggableWidgets() {
-    if (window.innerWidth <= 1100 || isMobileLikeDevice()) return;
-
     const widgets = [
         { el: document.querySelector('.widget-left'), handle: document.querySelector('.pomo-title') },
         { el: document.querySelector('.widget-right'), handle: document.querySelector('.sticky-title') }
@@ -749,7 +747,7 @@ function initDraggableWidgets() {
         
         function dragStart(e) {
             const evt = e.type.includes('touch') ? e.touches[0] : e;
-            if (!e.type.includes('touch')) e.preventDefault(); 
+            e.preventDefault();
             
             widget.el.classList.add('is-dragging');
             
@@ -1560,7 +1558,6 @@ function initTerminalLogic() {
     const successUi = document.getElementById('terminal-success-ui');
     const codeDisplay = document.getElementById('final-code-display');
     const copyTgBtn = document.getElementById('copy-tg-btn');
-    const antiFraudHint = document.getElementById('anti-fraud-hint');
     const container = document.querySelector('.terminal-container');
     const fraudInfo = getTerminalFraudInfo();
     let protectedKey = '';
@@ -1598,16 +1595,6 @@ function initTerminalLogic() {
             setTimeout(() => { err.style.display = 'none'; }, 2000);
         }
     };
-
-    if (antiFraudHint) {
-        if (fraudInfo.blocked) {
-            antiFraudHint.textContent = `⚠ Антифрод активирован (${fraudInfo.reason || 'suspicious'}). Получение ключа заблокировано.`;
-            antiFraudHint.style.color = '#ef4444';
-        } else {
-            antiFraudHint.textContent = '🛡️ Антифрод активен: копирование ключа защищено водяным знаком сессии.';
-            antiFraudHint.style.color = '#6b8c6c';
-        }
-    }
 
     // 3. Реализация click-to-copy для 'final-code-display'
     if (codeDisplay) {
