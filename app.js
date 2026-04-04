@@ -1823,6 +1823,7 @@ function initExtensionBreakQuest() {
 function initBalanceMinigame() {
     const checkbox = document.getElementById('balance-checkbox');
     const overlay = document.getElementById('balance-game-overlay');
+    const gameContainer = overlay ? overlay.querySelector('.balance-game-container') : null;
     const area = document.getElementById('balance-area');
     const pen = document.getElementById('balance-pen');
     const zone = document.getElementById('balance-zone');
@@ -1990,8 +1991,10 @@ function initBalanceMinigame() {
             if (lonaImg) lonaImg.src = pics.f;
             if (speech) speech.innerText = failQuotes[Math.floor(Math.random() * failQuotes.length)];
             if (restartBtn) restartBtn.style.display = 'block';
-            document.body.classList.add('loud-bang');
-            setTimeout(() => document.body.classList.remove('loud-bang'), 600);
+            if (gameContainer) {
+                gameContainer.classList.add('loss-vibrate');
+                setTimeout(() => gameContainer.classList.remove('loss-vibrate'), 520);
+            }
             showLoFiToast(failToasts[Math.floor(Math.random() * failToasts.length)], "#ef4444");
         }
     }
