@@ -11,7 +11,9 @@
     <aside class="side-widget widget-left">
         <div class="pomodoro-widget">
             <div class="pomo-orbit"></div>
-            <div class="pomo-title">🍅 Фокус-таймер</div>
+            <div class="widget-drag-handle" aria-label="Перетащить таймер">
+                <div class="pomo-title">🍅 Фокус-таймер</div>
+            </div>
             <div class="pomo-time" id="pomo-display">25:00</div>
             <div class="pomo-controls">
                 <button id="pomo-start">▶ Старт</button>
@@ -24,8 +26,10 @@
 
     <aside class="side-widget widget-right">
         <div class="sticky-note">
-            <div class="sticky-pin"></div>
-            <div class="sticky-title">План Бруника:</div>
+            <div class="widget-drag-handle" aria-label="Перетащить план Бруника">
+                <div class="sticky-pin"></div>
+                <div class="sticky-title">План Бруника:</div>
+            </div>
             <ul class="sticky-list">
                 <li><input type="checkbox" id="quest-cb-cat"> <span>Покормить кошку</span></li>
                 <li><input type="checkbox" id="balance-checkbox"> <span>Удержать баланс</span></li>
@@ -149,45 +153,41 @@
         </div>
     </div>
 
-    <!-- СЕКРЕТНЫЙ ФИНАЛЬНЫЙ ТЕРМИНАЛ ЛОНЫ -->
-    <div id="quest-final-overlay" class="modal" style="display:none; z-index: 30000; background: rgba(10, 12, 10, 0.98);">
+    <div id="terminal-overlay" class="modal" style="display:none; z-index: 30000; background: rgba(10, 12, 10, 0.98);">
         <div class="terminal-container">
             <div class="terminal-header">
                 <span class="terminal-dot red"></span>
                 <span class="terminal-dot yellow"></span>
                 <span class="terminal-dot green"></span>
-                <span class="terminal-title">LONA_OS // SECRET_ENCRYPTION_LAYER</span>
+                <span class="terminal-title">LONA_OS // ACCESS_LAYER</span>
                 <span id="terminal-close" style="margin-left: auto; cursor: pointer; color: #6b8c6c; font-size: 20px;">&times;</span>
             </div>
             <div class="terminal-body">
                 <div id="terminal-input-wrap">
                     <p class="t-msg">> Анализ системы... [OK]</p>
-                    <p class="t-msg">> Обнаружены фрагменты кода: <span id="t-fragments-count">0/5</span></p>
+                    <p class="t-msg">> Обнаружены фрагменты кода: <span id="terminal-count">0/5</span></p>
                     <p class="t-msg">> Введите расшифрованный ключ доступа:</p>
                     
-                    <div id="letter-slots" class="letter-slots">
-                        <!-- Буквы вперемешку -->
-                    </div>
+                    <div id="terminal-slots" class="letter-slots"></div>
 
                     <div class="terminal-input-row">
-                        <input type="text" id="final-word-input" maxlength="10" autocomplete="off" placeholder="КЛЮЧ_ЗДЕСЬ...">
-                        <button id="final-check-btn" class="btn">ДЕШИФРОВАТЬ</button>
+                        <input type="text" id="terminal-input" maxlength="10" autocomplete="off" placeholder="КЛЮЧ_ЗДЕСЬ...">
+                        <button id="terminal-submit" class="btn">ДЕШИФРОВАТЬ</button>
                     </div>
                     <div id="terminal-error" style="color: #ef4444; margin-top: 10px; display: none;">> ОШИБКА: НЕДОПУСТИМАЯ КОМБИНАЦИЯ.</div>
                 </div>
 
-                <!-- БЛОК УСПЕХА (скрыт по умолчанию) -->
-                <div id="terminal-success-ui" style="display:none; text-align: center;">
+                <div id="terminal-result" style="display:none; text-align: center;">
                     <p class="t-msg">> ДОСТУП РАЗРЕШЕН. СИСТЕМА ВЗЛОМАНА.</p>
                     <p class="t-msg">> ГЕНЕРАЦИЯ ИТОГОВОГО КОДА...</p>
-                    <div class="final-code-box" id="final-code-display" title="Кликни, чтобы скопировать">
+                    <div class="final-code-box" id="terminal-code" title="Кликни, чтобы скопировать">
                         KEY_LOCKED
                     </div>
                     <p style="font-size: 12px; color: #6b8c6c; margin-bottom: 20px;">(Кликни на код, чтобы скопировать его)</p>
                     <p class="t-msg">Отправь этот код Брунику в ЛС:</p>
                     <p class="t-msg">И приложи скриншот сайта: чтобы были видны выполненные задания плана Бруника.</p>
-                    <p id="anti-fraud-hint" style="font-size: 12px; margin: 8px 0 12px;">🛡️ Проверка целостности ключа активна.</p>
-                    <button id="copy-tg-btn" class="btn download-btn" style="margin-top:10px; cursor: pointer;">
+                    <p id="terminal-meta" style="font-size: 12px; margin: 8px 0 12px;">🛡️ Проверка целостности ключа активна.</p>
+                    <button id="terminal-copy" class="btn download-btn" style="margin-top:10px; cursor: pointer;">
                         📋 СКОПИРОВАТЬ ТГ: @brun11kbron
                     </button>
                 </div>
