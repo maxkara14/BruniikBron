@@ -736,22 +736,32 @@ function spawnSnitch() {
 // === ДВИЖОК DRAG & DROP (С СЕНСОРНЫМ ПРИВОДОМ) ===
 function initDraggableWidgets() {
     const widgets = [
-        { el: document.querySelector('.widget-left'), handle: document.querySelector('.pomodoro-widget') },
-        { el: document.querySelector('.widget-right'), handle: document.querySelector('.sticky-note') }
+        { el: document.querySelector('.widget-left') },
+        { el: document.querySelector('.widget-right') }
     ];
 
     widgets.forEach(widget => {
-        if (!widget.el || !widget.handle) return;
+        if (!widget.el) return;
+
+        const hostPanel = widget.el.firstElementChild;
+        if (!hostPanel) return;
+
+        let handle = widget.el.querySelector('.widget-drag-handle');
+        if (!handle) {
+            handle = document.createElement('div');
+            handle.className = 'widget-drag-handle';
+            handle.title = 'Потяни за верхнюю часть';
+            hostPanel.appendChild(handle);
+        }
+        widget.handle = handle;
         
         let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
         
         function dragStart(e) {
             const evt = e.type.includes('touch') ? e.touches[0] : e;
-            const handleRect = widget.handle.getBoundingClientRect();
-            const localY = evt.clientY - handleRect.top;
-            if (localY > 58) return;
             if (e.target.closest('button, input, a')) return;
             if (!e.type.includes('touch')) e.preventDefault(); 
+            if (e.type.includes('touch')) e.preventDefault();
             
             widget.el.classList.add('is-dragging');
             

@@ -759,6 +759,23 @@ section h2:hover::before {
     z-index: 1500;
 }
 
+.widget-drag-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 58px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    z-index: 30;
+}
+
+.widget-drag-handle:active {
+    cursor: grabbing;
+}
+
 @keyframes floatWidget {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-8px); }
@@ -1027,7 +1044,7 @@ section h2:hover::before {
     transform: rotate(-2deg);
     transition: transform 0.2s;
 }
-.canvas-note:hover { transform: rotate(0deg) scale(1.02); z-index: 1501; }
+.canvas-note:hover { transform: rotate(0deg) scale(1.02); z-index: 4701; }
 
 .canvas-handle {
     position: absolute; top: 0; left: 0; right: 0; height: 25px; cursor: grab;
