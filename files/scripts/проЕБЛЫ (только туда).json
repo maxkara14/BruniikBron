@@ -1,0 +1,17 @@
+{
+  "type": "script",
+  "enabled": true,
+  "name": "ПроЕБЛЫ (только туда)",
+  "id": "c067d007-fbbb-43be-9f36-d1695aaf6048",
+  "content": "// Только исходящий запрос: обычный пробел → U+2800.\neventMakeLast(tavern_events.CHAT_COMPLETION_SETTINGS_READY, data => {\n    if (!Array.isArray(data?.messages)) return;\n    for (const message of data.messages) {\n        if (!message || typeof message !== 'object') continue;\n        if (typeof message.content === 'string') {\n            message.content = message.content.replace(/ /g, '\\u2800');\n        } else if (Array.isArray(message.content)) {\n            for (const part of message.content) {\n                if (part?.type === 'text' && typeof part.text === 'string') {\n                    part.text = part.text.replace(/ /g, '\\u2800');\n                }\n            }\n        }\n    }\n});\n",
+  "info": "Исходная логика: U+0020 → U+2800 в тексте готового запроса Chat Completion. Не добавляет инструкций модели. Нет обратной замены, визуальных обработчиков и изменения полученных ответов. Используйте отдельно от других версий скрипта.",
+  "button": {
+    "enabled": false,
+    "buttons": []
+  },
+  "data": {},
+  "export_with": {
+    "data": true,
+    "button": true
+  }
+}

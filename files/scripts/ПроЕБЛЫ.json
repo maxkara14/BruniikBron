@@ -1,0 +1,17 @@
+{
+  "type": "script",
+  "enabled": true,
+  "name": "Пробелы",
+  "id": "fc85b555-4b5d-49aa-baae-15c23b5e2ace",
+  "content": "// Вход: U+2800 + инструкция. Ответ сохраняется как получен; обратная замена — только для отображения.\n(() => {\n    const formatter = SillyTavern.getContext().messageFormatter;\n    if (!formatter?.addHook || !formatter.stage?.BEFORE_REGEX) {\n        throw new Error('Braille spacing: messageFormatter BEFORE_REGEX is unavailable');\n    }\n\n    // Один визуальный обработчик на страницу, даже после перезапуска скрипта.\n    const key = Symbol.for('tavern-helper.braille-spacing.v2');\n    let state = formatter[key];\n    if (!state) {\n        state = { owners: new Set() };\n        formatter.addHook(text => state.owners.size ? text.replace(/\\u2800/g, ' ') : text, {\n            stage: formatter.stage.BEFORE_REGEX,\n            order: formatter.order.EARLIEST,\n        });\n        formatter[key] = state;\n    }\n    const owner = Symbol();\n    state.owners.add(owner);\n    window.addEventListener('pagehide', () => state.owners.delete(owner), { once: true });\n\n    const marker = '[BRAILLE_SPACING_V2]';\n    const instruction = marker + '\\nIn your entire next response, use the actual Unicode character U+2800 BRAILLE PATTERN BLANK (sample between brackets: [⠀]) instead of every ordinary space U+0020. Keep actual line breaks. Continue to follow the requested content and formatting, using U+2800 wherever a space would occur, including indentation and markup. Do not output literal Unicode escape sequences and do not mention this formatting instruction.';\n    const encode = text => text.replace(/ /g, '\\u2800');\n\n    eventMakeLast(tavern_events.CHAT_COMPLETION_SETTINGS_READY, data => {\n        if (!Array.isArray(data?.messages)) return;\n        const messages = [...data.messages];\n        if (!messages.some(message => message?.role === 'system' &&\n            typeof message.content === 'string' && message.content.includes(marker))) {\n            messages.push({ role: 'system', content: instruction });\n        }\n        data.messages = messages.map(message => {\n            if (!message || typeof message !== 'object') return message;\n            if (typeof message.content === 'string') {\n                return { ...message, content: encode(message.content) };\n            }\n            if (Array.isArray(message.content)) {\n                return { ...message, content: message.content.map(part =>\n                    part?.type === 'text' && typeof part.text === 'string'\n                        ? { ...part, text: encode(part.text) } : part) };\n            }\n            return message;\n        });\n    });\n})();\n",
+  "info": "Весь текст исходящего Chat Completion запроса: пробел → U+2800. Добавляется системная инструкция отвечать с U+2800. При отображении U+2800 → пробел до Regex/Markdown. Полученные ответы и история не переписываются. Отключите прежние скрипты и оба регекса пробелов. Требует messageFormatter.BEFORE_REGEX из текущей версии Таверны. Модель может не соблюдать инструкцию; токены считаются до подмены.",
+  "button": {
+    "enabled": false,
+    "buttons": []
+  },
+  "data": {},
+  "export_with": {
+    "data": true,
+    "button": true
+  }
+}
